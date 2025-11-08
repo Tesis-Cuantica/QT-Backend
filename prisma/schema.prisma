@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coursesCreated Course[]   @relation("CourseCreator")
+  enrollments    Enrollment[]
+  authoredExams  Exam[]
+  authoredLabs   QuantumLab[]
+  examAttempts   ExamAttempt[]  @relation("UserExamAttempts")
+  studentLabs    StudentLab[]   @relation("UserStudentLabs")
+}
+
+enum Role {
+  ADMIN
+  PROFESSOR
+  STUDENT
+}
+
+model Course {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  level       Level    @default(BASIC)
+  status      Status   @default(DRAFT)
+  professorId Int
+  professor   User     @relation("CourseCreator", fields: [professorId], references: [id])
+  modules     Module[]
+  enrollments Enrollment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Level {
+  BASIC
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum Status {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model Module {
+  id        Int      @id @default(autoincrement())
+  title     String
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order     Int
+  lessons   Lesson[]
+  labs      QuantumLab[]
+  exams     Exam[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, order])
+}
+
+model Lesson {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  type      String   // "text", "video", "pdf", "link"
+  moduleId  Int
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([moduleId, order])
+}
+
+model QuantumLab {
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String?
+  circuitJSON   String   
+  correctResult String? 
+  moduleId      Int?
+  module        Module?  @relation(fields: [moduleId], references: [id])
+  authorId      Int
+  author        User     @relation(fields: [authorId], references: [id])
+  isTemplate    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  studentLabs   StudentLab[]
+}
+
+model StudentLab {
+  id          Int        @id @default(autoincrement())
+  studentId   Int
+  student     User       @relation("UserStudentLabs", fields: [studentId], references: [id])
+  labId       Int
+  lab         QuantumLab @relation(fields: [labId], references: [id])
+  circuitJSON String
+  result      String?
+  passed      Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([studentId, labId])
+}
+
+model Exam {
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String?
+  timeLimit     Int
+  maxAttempts   Int      @default(1)
+  passingScore  Float    @default(70.0)
+  published     Boolean  @default(false)
+  availableFrom DateTime?
+  availableTo   DateTime?
+  moduleId      Int      // ← ¡NO es opcional! (no tiene ?)
+  module        Module   @relation(fields: [moduleId], references: [id]) // ← relación obligatoria
+  authorId      Int
+  author        User     @relation(fields: [authorId], references: [id])
+  questions     Question[]
+  attempts      ExamAttempt[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Question {
+  id        Int           @id @default(autoincrement())
+  examId    Int
+  exam      Exam          @relation(fields: [examId], references: [id])
+  type      QuestionType
+  text      String
+  options   String?       // JSON array: ["A", "B", "C", "D"]
+  correct   String        // valor exacto o JSON
+  points    Float         @default(1.0)
+  order     Int
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([examId, order])
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SHORT_ANSWER
+  ESSAY
+  QUANTUM_SIMULATION
+}
+
+model ExamAttempt {
+  id          Int            @id @default(autoincrement())
+  studentId   Int
+  student     User           @relation("UserExamAttempts", fields: [studentId], references: [id])
+  examId      Int
+  exam        Exam           @relation(fields: [examId], references: [id])
+  answers     String
+  score       Float?
+  status      AttemptStatus  @default(IN_PROGRESS)
+  startedAt   DateTime       @default(now())
+  submittedAt DateTime?
+  feedback    String?
+
+  @@unique([studentId, examId, startedAt])
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  EXPIRED
+  GRADED
+}
+
+model Enrollment {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  student     User     @relation(fields: [studentId], references: [id])
+  courseId    Int
+  course      Course   @relation(fields: [courseId], references: [id])
+  progress    Float    @default(0.0)
+  completed   Boolean  @default(false)
+  enrolledAt  DateTime @default(now())
+  completedAt DateTime?
+
+  @@unique([studentId, courseId])
+}
