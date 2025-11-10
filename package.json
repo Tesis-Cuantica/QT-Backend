@@ -14,8 +14,7 @@
     "docker:logs": "docker-compose logs -f backend"
   },
   "prisma": {
-    "seed": "node prisma/seed.js",
-    "seed-content": "node prisma/seed-content.js"
+    "seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",

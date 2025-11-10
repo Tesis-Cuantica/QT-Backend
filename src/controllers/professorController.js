@@ -31,7 +31,6 @@ const getMyCourses = async (req, res) => {
       .json({ message: "Error al obtener tus cursos.", error: error.message });
   }
 };
-
 const getPendingAttempts = async (req, res) => {
   try {
     const attempts = await prisma.examAttempt.findMany({
@@ -47,17 +46,15 @@ const getPendingAttempts = async (req, res) => {
       include: {
         student: { select: { name: true } },
         exam: { select: { title: true } },
-        answers: true,
       },
     });
     res.json(attempts);
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error al obtener intentos pendientes.",
-        error: error.message,
-      });
+    console.error("Error en getPendingAttempts:", error);
+    res.status(500).json({
+      message: "Error al obtener intentos pendientes.",
+      error: error.message,
+    });
   }
 };
 
@@ -113,12 +110,10 @@ const gradeAttempt = async (req, res) => {
 
     res.json(updated);
   } catch (error) {
-    res
-      .status(400)
-      .json({
-        message: "Error al calificar el intento.",
-        error: error.message,
-      });
+    res.status(400).json({
+      message: "Error al calificar el intento.",
+      error: error.message,
+    });
   }
 };
 
