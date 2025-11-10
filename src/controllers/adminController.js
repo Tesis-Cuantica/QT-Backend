@@ -3,6 +3,7 @@
 // Fecha:   2025-11-10
 // Archivo: adminController.js
 // ═══════════════════════════════════════════════════════════════════════════════
+
 const prisma = require("../models");
 const bcrypt = require("bcrypt");
 
@@ -27,12 +28,7 @@ const getUsers = async (req, res) => {
       prisma.user.count(),
     ]);
 
-    res.json({
-      data: users,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-    });
+    res.json({ data: users, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
     res
       .status(500)
@@ -42,25 +38,18 @@ const getUsers = async (req, res) => {
 
 const createUser = async (req, res) => {
   const { name, email, password, role } = req.body;
-
   if (!["ADMIN", "PROFESSOR", "STUDENT"].includes(role)) {
     return res.status(400).json({ message: "Rol inválido." });
   }
 
   try {
     const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
+    if (existing)
       return res.status(400).json({ message: "El correo ya está registrado." });
-    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role,
-      },
+      data: { name, email, password: hashedPassword, role },
       select: {
         id: true,
         name: true,
@@ -78,17 +67,11 @@ const createUser = async (req, res) => {
 };
 
 const updateUserRole = async (req, res) => {
-  const { id } = req.params;
+  const userId = Number(req.params.id);
   const { role } = req.body;
-  const userId = Number(id);
-
-  if (isNaN(userId)) {
-    return res.status(400).json({ message: "ID inválido." });
-  }
-
-  if (!["ADMIN", "PROFESSOR", "STUDENT"].includes(role)) {
+  if (isNaN(userId)) return res.status(400).json({ message: "ID inválido." });
+  if (!["ADMIN", "PROFESSOR", "STUDENT"].includes(role))
     return res.status(400).json({ message: "Rol inválido." });
-  }
 
   try {
     const updated = await prisma.user.update({
@@ -97,9 +80,8 @@ const updateUserRole = async (req, res) => {
     });
     res.json(updated);
   } catch (error) {
-    if (error.code === "P2025") {
+    if (error.code === "P2025")
       return res.status(404).json({ message: "Usuario no encontrado." });
-    }
     res
       .status(400)
       .json({ message: "Error al actualizar el rol.", error: error.message });
@@ -107,12 +89,8 @@ const updateUserRole = async (req, res) => {
 };
 
 const deleteUser = async (req, res) => {
-  const { id } = req.params;
-  const userId = Number(id);
-
-  if (isNaN(userId)) {
-    return res.status(400).json({ message: "ID inválido." });
-  }
+  const userId = Number(req.params.id);
+  if (isNaN(userId)) return res.status(400).json({ message: "ID inválido." });
 
   try {
     const hasCourses = await prisma.course.count({
@@ -121,7 +99,6 @@ const deleteUser = async (req, res) => {
     const hasEnrollments = await prisma.enrollment.count({
       where: { studentId: userId },
     });
-
     if (hasCourses > 0 || hasEnrollments > 0) {
       return res.status(400).json({
         message: "No se puede eliminar: el usuario tiene datos asociados.",
@@ -131,9 +108,8 @@ const deleteUser = async (req, res) => {
     await prisma.user.delete({ where: { id: userId } });
     res.json({ message: "Usuario eliminado correctamente." });
   } catch (error) {
-    if (error.code === "P2025") {
+    if (error.code === "P2025")
       return res.status(404).json({ message: "Usuario no encontrado." });
-    }
     res
       .status(400)
       .json({ message: "Error al eliminar el usuario.", error: error.message });
@@ -158,12 +134,7 @@ const getAllCourses = async (req, res) => {
       prisma.course.count(),
     ]);
 
-    res.json({
-      data: courses,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-    });
+    res.json({ data: courses, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
     res
       .status(500)
@@ -172,12 +143,9 @@ const getAllCourses = async (req, res) => {
 };
 
 const getCourseById = async (req, res) => {
-  const { id } = req.params;
-  const courseId = Number(id);
-
-  if (isNaN(courseId)) {
+  const courseId = Number(req.params.id);
+  if (isNaN(courseId))
     return res.status(400).json({ message: "ID de curso inválido." });
-  }
 
   try {
     const course = await prisma.course.findUnique({
@@ -190,11 +158,8 @@ const getCourseById = async (req, res) => {
         },
       },
     });
-
-    if (!course) {
+    if (!course)
       return res.status(404).json({ message: "Curso no encontrado." });
-    }
-
     res.json(course);
   } catch (error) {
     res
@@ -204,41 +169,41 @@ const getCourseById = async (req, res) => {
 };
 
 const createCourse = async (req, res) => {
-  const {
-    title,
-    description,
-    category,
-    level,
-    status,
-    professorId,
-    price,
-    thumbnail,
-  } = req.body;
+  const { title, description, level, status = "DRAFT", professorId } = req.body;
 
-  if (!["DRAFT", "ACTIVE", "CLOSED"].includes(status)) {
-    return res.status(400).json({ message: "Estado inválido." });
-  }
+  if (!title)
+    return res
+      .status(400)
+      .json({ message: "El título del curso es requerido." });
+
+  const validStatuses = ["DRAFT", "ACTIVE", "CLOSED"];
+  const finalStatus = validStatuses.includes(status) ? status : "DRAFT";
+
+  const validLevels = ["BASIC", "INTERMEDIATE", "ADVANCED"];
+  const finalLevel = validLevels.includes((level || "").toUpperCase())
+    ? level.toUpperCase()
+    : "BASIC";
 
   try {
     const professor = await prisma.user.findUnique({
       where: { id: Number(professorId), role: "PROFESSOR" },
     });
-    if (!professor) {
+    if (!professor)
       return res.status(400).json({ message: "Profesor no válido." });
-    }
 
     const course = await prisma.course.create({
       data: {
         title,
         description,
-        category,
-        level,
-        status,
-        price: price ? parseFloat(price) : null,
-        thumbnail,
+        level: finalLevel,
+        status: finalStatus,
         professorId: professor.id,
       },
+      include: {
+        professor: { select: { id: true, name: true, email: true } },
+      },
     });
+
     res.status(201).json(course);
   } catch (error) {
     res
@@ -248,8 +213,7 @@ const createCourse = async (req, res) => {
 };
 
 const updateCourse = async (req, res) => {
-  const { id } = req.params;
-  const courseId = Number(id);
+  const courseId = Number(req.params.id);
   const {
     title,
     description,
@@ -260,14 +224,10 @@ const updateCourse = async (req, res) => {
     price,
     thumbnail,
   } = req.body;
-
-  if (isNaN(courseId)) {
+  if (isNaN(courseId))
     return res.status(400).json({ message: "ID de curso inválido." });
-  }
-
-  if (status && !["DRAFT", "ACTIVE", "CLOSED"].includes(status)) {
+  if (status && !["DRAFT", "ACTIVE", "CLOSED"].includes(status))
     return res.status(400).json({ message: "Estado inválido." });
-  }
 
   try {
     const data = {};
@@ -282,9 +242,8 @@ const updateCourse = async (req, res) => {
       const professor = await prisma.user.findUnique({
         where: { id: Number(professorId), role: "PROFESSOR" },
       });
-      if (!professor) {
+      if (!professor)
         return res.status(400).json({ message: "Profesor no válido." });
-      }
       data.professorId = professor.id;
     }
 
@@ -294,9 +253,8 @@ const updateCourse = async (req, res) => {
     });
     res.json(updated);
   } catch (error) {
-    if (error.code === "P2025") {
+    if (error.code === "P2025")
       return res.status(404).json({ message: "Curso no encontrado." });
-    }
     res
       .status(400)
       .json({ message: "Error al actualizar el curso.", error: error.message });
@@ -304,17 +262,12 @@ const updateCourse = async (req, res) => {
 };
 
 const updateCourseStatus = async (req, res) => {
-  const { id } = req.params;
+  const courseId = Number(req.params.id);
   const { status } = req.body;
-  const courseId = Number(id);
-
-  if (isNaN(courseId)) {
+  if (isNaN(courseId))
     return res.status(400).json({ message: "ID de curso inválido." });
-  }
-
-  if (!["DRAFT", "ACTIVE", "CLOSED"].includes(status)) {
+  if (!["DRAFT", "ACTIVE", "CLOSED"].includes(status))
     return res.status(400).json({ message: "Estado inválido." });
-  }
 
   try {
     const updated = await prisma.course.update({
@@ -323,33 +276,28 @@ const updateCourseStatus = async (req, res) => {
     });
     res.json(updated);
   } catch (error) {
-    if (error.code === "P2025") {
+    if (error.code === "P2025")
       return res.status(404).json({ message: "Curso no encontrado." });
-    }
     res
       .status(400)
       .json({ message: "Error al actualizar el curso.", error: error.message });
   }
 };
-const deleteCourse = async (req, res) => {
-  const { id } = req.params;
-  const courseId = Number(id);
 
-  if (isNaN(courseId)) {
+const deleteCourse = async (req, res) => {
+  const courseId = Number(req.params.id);
+  if (isNaN(courseId))
     return res.status(400).json({ message: "ID de curso inválido." });
-  }
 
   try {
     await prisma.course.delete({ where: { id: courseId } });
     res.json({ message: "Curso eliminado correctamente." });
   } catch (error) {
-    if (error.code === "P2025") {
+    if (error.code === "P2025")
       return res.status(404).json({ message: "Curso no encontrado." });
-    }
-    res.status(400).json({
-      message: "Error al eliminar el curso.",
-      error: error.message,
-    });
+    res
+      .status(400)
+      .json({ message: "Error al eliminar el curso.", error: error.message });
   }
 };
 

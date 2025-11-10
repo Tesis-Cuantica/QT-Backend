@@ -1,0 +1,250 @@
+[
+  {
+    "method": "POST",
+    "path": "\\~\\register"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\login"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\admin\\users"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:id\\students"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\courses\\:courseId"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\courses\\:courseId"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\modules\\:moduleId"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\modules\\:moduleId"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\modules\\:moduleId"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\modules\\:moduleId"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\simulate"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\student-labs"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\modules\\:moduleId"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\modules\\:moduleId"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\"
+  },
+  {
+    "method": "PUT",
+    "path": "\\~\\progress"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\progress"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:courseId\\progress"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\save"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\submit"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\exams\\:examId"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\reset\\:examId\\:studentId"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\courses\\:courseId"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\download\\:fileName"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\student"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\professor"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\admin"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\users"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\users"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\users\\:id\\role"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\users\\:id"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\courses"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\courses"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\courses\\:id"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\courses\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\courses\\:id"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\courses\\:id\\status"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\courses"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\attempts\\pending"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\attempts\\:attemptId\\grade"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\enrollments\\:courseId\\complete"
+  },
+  {
+    "method": "GET",
+    "path": "\\api\\health"
+  }
+]

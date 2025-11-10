@@ -1,3 +1,8 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: courseRoutes.js
+// ═══════════════════════════════════════════════════════════════════════════════
 const express = require("express");
 const router = express.Router();
 const courseController = require("../controllers/courseController");
@@ -13,5 +18,7 @@ router
   .get(protect, courseController.getCourseById)
   .patch(protect, courseController.updateCourse)
   .delete(protect, courseController.deleteCourse);
-
+router
+  .route("/:id/students")
+  .get(protect, courseController.getEnrolledStudents);
 module.exports = router;

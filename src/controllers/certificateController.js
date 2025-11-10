@@ -1,8 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════════════════
-// Autor:   Jairo Quispe Coa
-// Fecha:   2025-11-10
-// Archivo: certificateController.js
-// ═══════════════════════════════════════════════════════════════════════════════
 const prisma = require("../models");
 const fs = require("fs");
 const path = require("path");
@@ -26,17 +21,15 @@ const generateCertificateForCourse = async (req, res) => {
       },
     });
 
-    if (!enrollment) {
+    if (!enrollment)
       return res
         .status(404)
         .json({ message: "No estás inscrito en este curso." });
-    }
 
-    if (!enrollment.completed || enrollment.progress < 100) {
+    if (!enrollment.completed || enrollment.progress < 100)
       return res
         .status(400)
         .json({ message: "Aún no has completado el curso." });
-    }
 
     const { fileName } = generateCertificate(
       enrollment.student.name,
@@ -58,23 +51,17 @@ const generateCertificateForCourse = async (req, res) => {
 
 const downloadCertificate = async (req, res) => {
   const { fileName } = req.params;
-
-  if (!/^[a-zA-Z0-9_-]+\.pdf$/.test(fileName)) {
-    return res.status(400).json({ message: "Nombre de archivo inválido." });
-  }
-
   const filePath = path.join(__dirname, "../../public/certificates", fileName);
 
-  if (!fs.existsSync(filePath)) {
+  if (!/^[a-zA-Z0-9_-]+\.pdf$/.test(fileName))
+    return res.status(400).json({ message: "Nombre de archivo inválido." });
+
+  if (!fs.existsSync(filePath))
     return res.status(404).json({ message: "Certificado no encontrado." });
-  }
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   res.sendFile(filePath);
 };
 
-module.exports = {
-  generateCertificateForCourse,
-  downloadCertificate,
-};
+module.exports = { generateCertificateForCourse, downloadCertificate };

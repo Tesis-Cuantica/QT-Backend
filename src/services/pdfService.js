@@ -1,3 +1,9 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: pdfService.js
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");

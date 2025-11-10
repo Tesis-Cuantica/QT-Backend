@@ -6,17 +6,37 @@
 const express = require("express");
 const router = express.Router();
 const lessonController = require("../controllers/lessonController");
-const { protect } = require("../middleware/auth");
+const { protect, authorize } = require("../middleware/auth");
 
 router
   .route("/modules/:moduleId")
-  .get(protect, lessonController.getLessonsByModule)
-  .post(protect, lessonController.createLesson);
+  .get(
+    protect,
+    authorize("STUDENT", "PROFESSOR", "ADMIN"),
+    lessonController.getLessonsByModule
+  )
+  .post(
+    protect,
+    authorize("PROFESSOR", "ADMIN"),
+    lessonController.createLesson
+  );
 
 router
   .route("/:id")
-  .get(protect, lessonController.getLessonById)
-  .patch(protect, lessonController.updateLesson)
-  .delete(protect, lessonController.deleteLesson);
+  .get(
+    protect,
+    authorize("STUDENT", "PROFESSOR", "ADMIN"),
+    lessonController.getLessonById
+  )
+  .patch(
+    protect,
+    authorize("PROFESSOR", "ADMIN"),
+    lessonController.updateLesson
+  )
+  .delete(
+    protect,
+    authorize("PROFESSOR", "ADMIN"),
+    lessonController.deleteLesson
+  );
 
 module.exports = router;

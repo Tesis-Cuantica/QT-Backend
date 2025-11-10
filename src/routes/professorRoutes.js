@@ -3,6 +3,7 @@
 // Fecha:   2025-11-10
 // Archivo: professorRoutes.js
 // ═══════════════════════════════════════════════════════════════════════════════
+
 const express = require("express");
 const router = express.Router();
 const professorController = require("../controllers/professorController");

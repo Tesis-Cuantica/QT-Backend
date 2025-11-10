@@ -1,13 +1,16 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: enrollmentRoutes.js
+// ═══════════════════════════════════════════════════════════════════════════════
 const express = require("express");
 const router = express.Router();
 const enrollmentController = require("../controllers/enrollmentController");
-const { protect } = require("../middleware/auth");
-
+const { protect, authorize } = require("../middleware/auth");
 router
   .route("/")
-  .post(protect, enrollmentController.enrollInCourse)
-  .get(protect, enrollmentController.getMyEnrollments);
-
+  .post(protect, authorize("STUDENT"), enrollmentController.enrollInCourse)
+  .get(protect, authorize("STUDENT"), enrollmentController.getMyEnrollments);
 router
   .route("/progress")
   .put(protect, enrollmentController.updateProgress)

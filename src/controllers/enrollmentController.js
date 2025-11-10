@@ -1,24 +1,15 @@
-// ═══════════════════════════════════════════════════════════════════════════════
-// Autor:   Jairo Quispe Coa
-// Fecha:   2025-11-10
-// Archivo: enrollmentController.js
-// ═══════════════════════════════════════════════════════════════════════════════
 const prisma = require("../models");
 
 const enrollInCourse = async (req, res) => {
-  const { courseId } = req.body;
+  const cid = Number(req.body.courseId);
   const studentId = req.user.id;
-  const cid = Number(courseId);
 
-  if (isNaN(cid)) {
+  if (isNaN(cid))
     return res.status(400).json({ message: "ID de curso inválido." });
-  }
-
-  if (req.user.role !== "STUDENT") {
+  if (req.user.role !== "STUDENT")
     return res
       .status(403)
       .json({ message: "Solo los estudiantes pueden inscribirse en cursos." });
-  }
 
   try {
     const course = await prisma.course.findUnique({ where: { id: cid } });
@@ -42,19 +33,16 @@ const enrollInCourse = async (req, res) => {
     });
     res.status(201).json(enrollment);
   } catch (error) {
-    res
-      .status(400)
-      .json({
-        message: "Error al inscribirse en el curso.",
-        error: error.message,
-      });
+    res.status(400).json({
+      message: "Error al inscribirse en el curso.",
+      error: error.message,
+    });
   }
 };
 
 const getMyEnrollments = async (req, res) => {
-  const { page = 1, limit = 10 } = req.query;
-  const pageNum = parseInt(page);
-  const limitNum = parseInt(limit);
+  const pageNum = parseInt(req.query.page || 1);
+  const limitNum = parseInt(req.query.limit || 10);
   const skip = (pageNum - 1) * limitNum;
 
   try {
@@ -83,45 +71,40 @@ const getMyEnrollments = async (req, res) => {
       pages: Math.ceil(total / limitNum),
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error al obtener tus inscripciones.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al obtener tus inscripciones.",
+      error: error.message,
+    });
   }
 };
 
 const calculateProgress = async (studentId, courseId) => {
-  const [modules, labsDoneCount, examAttempts] = await Promise.all([
-    prisma.module.findMany({
-      where: { courseId },
-      include: {
-        lessons: { select: { id: true } },
-        labs: { select: { id: true } },
-        exams: { select: { id: true, passingScore: true } },
-      },
-    }),
-    prisma.studentLab.count({
-      where: { studentId, lab: { moduleId: { in: modules.map((m) => m.id) } } },
-    }),
-    prisma.examAttempt.findMany({
-      where: {
-        studentId,
-        exam: { moduleId: { in: modules.map((m) => m.id) } },
-        status: "GRADED",
-      },
-      orderBy: { score: "desc" },
-    }),
-  ]);
-
+  const modules = await prisma.module.findMany({
+    where: { courseId },
+    include: {
+      lessons: { select: { id: true } },
+      labs: { select: { id: true } },
+      exams: { select: { id: true, passingScore: true } },
+    },
+  });
   if (modules.length === 0) return 0.0;
+
+  const labsDoneCount = await prisma.studentLab.count({
+    where: { studentId, lab: { moduleId: { in: modules.map((m) => m.id) } } },
+  });
+  const examAttempts = await prisma.examAttempt.findMany({
+    where: {
+      studentId,
+      exam: { moduleId: { in: modules.map((m) => m.id) } },
+      status: "GRADED",
+    },
+    orderBy: { score: "desc" },
+  });
 
   const examResults = {};
   examAttempts.forEach((a) => {
-    if (!examResults[a.examId] || examResults[a.examId].score < a.score) {
+    if (!examResults[a.examId] || examResults[a.examId].score < a.score)
       examResults[a.examId] = a;
-    }
   });
 
   let completedModules = 0;
@@ -129,7 +112,6 @@ const calculateProgress = async (studentId, courseId) => {
     const lessonsDone = module.lessons.length > 0;
     const labsDone = labsDoneCount > 0;
     let examsPassed = true;
-
     for (const exam of module.exams) {
       const attempt = examResults[exam.id];
       if (!attempt || attempt.score < exam.passingScore) {
@@ -137,23 +119,17 @@ const calculateProgress = async (studentId, courseId) => {
         break;
       }
     }
-
-    if (lessonsDone && labsDone && examsPassed) {
-      completedModules++;
-    }
+    if (lessonsDone && labsDone && examsPassed) completedModules++;
   }
 
   return parseFloat(((completedModules / modules.length) * 100).toFixed(2));
 };
 
 const updateProgress = async (req, res) => {
-  const { courseId } = req.body;
+  const cid = Number(req.body.courseId);
   const studentId = req.user.id;
-  const cid = Number(courseId);
-
-  if (isNaN(cid)) {
+  if (isNaN(cid))
     return res.status(400).json({ message: "ID de curso inválido." });
-  }
 
   try {
     const enrollment = await prisma.enrollment.findUnique({
@@ -176,23 +152,18 @@ const updateProgress = async (req, res) => {
     });
     res.json(updated);
   } catch (error) {
-    res
-      .status(400)
-      .json({
-        message: "Error al actualizar el progreso.",
-        error: error.message,
-      });
+    res.status(400).json({
+      message: "Error al actualizar el progreso.",
+      error: error.message,
+    });
   }
 };
 
 const getProgress = async (req, res) => {
-  const { courseId } = req.params;
+  const cid = Number(req.params.courseId);
   const studentId = req.user.id;
-  const cid = Number(courseId);
-
-  if (isNaN(cid)) {
+  if (isNaN(cid))
     return res.status(400).json({ message: "ID de curso inválido." });
-  }
 
   try {
     const enrollment = await prisma.enrollment.findUnique({
@@ -210,10 +181,28 @@ const getProgress = async (req, res) => {
       .json({ message: "Error al obtener el progreso.", error: error.message });
   }
 };
+const completeCourse = async (req, res) => {
+  const studentId = req.user.id;
+  const { courseId } = req.params;
 
+  try {
+    const updated = await prisma.enrollment.update({
+      where: { studentId_courseId: { studentId, courseId: Number(courseId) } },
+      data: { completed: true, progress: 100, completedAt: new Date() },
+    });
+
+    res.json({ message: "Curso completado.", enrollment: updated });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al marcar curso como completado.",
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   enrollInCourse,
   getMyEnrollments,
   updateProgress,
   getProgress,
+  completeCourse,
 };

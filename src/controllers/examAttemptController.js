@@ -3,23 +3,24 @@
 // Fecha:   2025-11-10
 // Archivo: examAttemptController.js
 // ═══════════════════════════════════════════════════════════════════════════════
+
 const prisma = require("../models");
 
 const startAttempt = async (req, res) => {
-  const { examId } = req.body;
+  const eid = Number(req.body.examId);
   const studentId = req.user.id;
-  const eid = Number(examId);
 
-  if (isNaN(eid)) {
+  if (isNaN(eid))
     return res.status(400).json({ message: "ID de examen inválido." });
-  }
 
   try {
     const exam = await prisma.exam.findUnique({
       where: { id: eid },
       include: {
         module: {
-          course: { include: { enrollments: { where: { studentId } } } },
+          include: {
+            course: { include: { enrollments: { where: { studentId } } } },
+          },
         },
       },
     });
@@ -28,9 +29,7 @@ const startAttempt = async (req, res) => {
       return res.status(404).json({ message: "Examen no encontrado." });
     if (!exam.published)
       return res.status(403).json({ message: "Examen no publicado." });
-
-    const isEnrolled = exam.module.course.enrollments.length > 0;
-    if (!isEnrolled)
+    if (exam.module.course.enrollments.length === 0)
       return res
         .status(403)
         .json({ message: "No estás inscrito en este curso." });
@@ -38,23 +37,20 @@ const startAttempt = async (req, res) => {
     const attempts = await prisma.examAttempt.count({
       where: { studentId, examId: eid },
     });
-    if (attempts >= exam.maxAttempts) {
+    if (attempts >= exam.maxAttempts)
       return res
         .status(403)
         .json({ message: "Has alcanzado el límite de intentos." });
-    }
 
     const now = new Date();
-    if (exam.availableFrom && new Date(exam.availableFrom) > now) {
+    if (exam.availableFrom && new Date(exam.availableFrom) > now)
       return res
         .status(403)
         .json({ message: "El examen aún no está disponible." });
-    }
-    if (exam.availableTo && new Date(exam.availableTo) < now) {
+    if (exam.availableTo && new Date(exam.availableTo) < now)
       return res
         .status(403)
         .json({ message: "El examen ya no está disponible." });
-    }
 
     const attempt = await prisma.examAttempt.create({
       data: { studentId, examId: eid, answers: "{}", status: "IN_PROGRESS" },
@@ -68,25 +64,20 @@ const startAttempt = async (req, res) => {
 };
 
 const saveAnswers = async (req, res) => {
-  const { attemptId, answers } = req.body;
-  const aid = Number(attemptId);
+  const aid = Number(req.body.attemptId);
+  const { answers } = req.body;
 
-  if (isNaN(aid)) {
+  if (isNaN(aid))
     return res.status(400).json({ message: "ID de intento inválido." });
-  }
 
   try {
-    const attempt = await prisma.examAttempt.findUnique({
-      where: { id: aid },
-    });
-    if (!attempt || attempt.studentId !== req.user.id) {
+    const attempt = await prisma.examAttempt.findUnique({ where: { id: aid } });
+    if (!attempt || attempt.studentId !== req.user.id)
       return res.status(404).json({ message: "Intento no encontrado." });
-    }
-    if (attempt.status !== "IN_PROGRESS") {
-      return res.status(400).json({
-        message: "No se pueden guardar respuestas en un intento finalizado.",
-      });
-    }
+    if (attempt.status !== "IN_PROGRESS")
+      return res
+        .status(400)
+        .json({ message: "El intento ya fue enviado o calificado." });
 
     await prisma.examAttempt.update({
       where: { id: aid },
@@ -100,15 +91,18 @@ const saveAnswers = async (req, res) => {
   }
 };
 
-const normalizeArray = (arr) => (arr ? arr.map(String).sort().join("|") : "");
+const normalizeArray = (arr) => {
+  if (!arr) return "";
+  if (!Array.isArray(arr)) arr = [String(arr)];
+  return arr.map(String).sort().join("|");
+};
 
 const submitExam = async (req, res) => {
-  const { attemptId } = req.body;
-  const aid = Number(attemptId);
+  const aid = Number(req.body.attemptId);
+  const studentId = req.user.id;
 
-  if (isNaN(aid)) {
+  if (isNaN(aid))
     return res.status(400).json({ message: "ID de intento inválido." });
-  }
 
   try {
     const attempt = await prisma.examAttempt.findUnique({
@@ -116,56 +110,55 @@ const submitExam = async (req, res) => {
       include: { exam: { include: { questions: true } } },
     });
 
-    if (!attempt || attempt.studentId !== req.user.id) {
+    if (!attempt || attempt.studentId !== studentId)
       return res.status(404).json({ message: "Intento no encontrado." });
-    }
-    if (attempt.status !== "IN_PROGRESS") {
-      return res.status(400).json({ message: "El intento ya fue enviado." });
-    }
+    if (attempt.status !== "IN_PROGRESS")
+      return res
+        .status(400)
+        .json({ message: "El intento ya fue enviado o calificado." });
 
     const answers = JSON.parse(attempt.answers || "{}");
     let totalPoints = 0;
     let earnedPoints = 0;
-    let hasManual = false;
+    let requiresManual = false;
 
     for (const q of attempt.exam.questions) {
       totalPoints += q.points;
       const userAnswer = answers[q.id];
 
       if (q.type === "ESSAY") {
-        hasManual = true;
+        requiresManual = true;
         continue;
       }
 
       if (q.type === "SHORT_ANSWER") {
-        const expected =
-          typeof q.correct === "string" ? q.correct.trim().toLowerCase() : "";
+        const expected = (q.correct || "").trim().toLowerCase();
         const given = userAnswer ? String(userAnswer).trim().toLowerCase() : "";
-        if (given === expected) {
-          earnedPoints += q.points;
+        if (given === expected) earnedPoints += q.points;
+      } else if (["MULTIPLE_CHOICE", "QUANTUM_SIMULATION"].includes(q.type)) {
+        let expected;
+        try {
+          expected = JSON.parse(q.correct);
+        } catch {
+          expected = q.correct;
         }
-      } else if (
-        q.type === "MULTIPLE_CHOICE" ||
-        q.type === "QUANTUM_SIMULATION"
-      ) {
-        const expected = normalizeArray(JSON.parse(q.correct));
-        const given = normalizeArray(userAnswer);
-        if (given === expected) {
+        const given = userAnswer;
+        if (normalizeArray(given) === normalizeArray(expected))
           earnedPoints += q.points;
-        }
       }
     }
 
-    const score = hasManual
+    const score = requiresManual
       ? null
       : parseFloat(((earnedPoints / (totalPoints || 1)) * 100).toFixed(2));
-    const status = hasManual ? "SUBMITTED" : "GRADED";
+    const status = requiresManual ? "SUBMITTED" : "GRADED";
 
     const updated = await prisma.examAttempt.update({
       where: { id: aid },
       data: { submittedAt: new Date(), score, status },
       include: { exam: true },
     });
+
     res.json(updated);
   } catch (error) {
     res
@@ -175,18 +168,39 @@ const submitExam = async (req, res) => {
 };
 
 const getAttempts = async (req, res) => {
-  const { examId } = req.params;
-  const eid = Number(examId);
-
-  if (isNaN(eid)) {
+  const eid = Number(req.params.examId);
+  if (isNaN(eid))
     return res.status(400).json({ message: "ID de examen inválido." });
-  }
 
   try {
-    const attempts = await prisma.examAttempt.findMany({
-      where: { studentId: req.user.id, examId: eid },
-      orderBy: { startedAt: "desc" },
+    const exam = await prisma.exam.findUnique({
+      where: { id: eid },
+      select: { authorId: true },
     });
+
+    if (!exam)
+      return res.status(404).json({ message: "Examen no encontrado." });
+
+    let where = { examId: eid };
+
+    if (req.user.role === "STUDENT") {
+      where.studentId = req.user.id;
+    } else if (req.user.role === "PROFESSOR") {
+      if (exam.authorId !== req.user.id)
+        return res
+          .status(403)
+          .json({ message: "No puedes ver intentos de exámenes ajenos." });
+    }
+
+    const attempts = await prisma.examAttempt.findMany({
+      where,
+      include: {
+        student: { select: { id: true, name: true, email: true } },
+        exam: { select: { id: true, title: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+    });
+
     res.json(attempts);
   } catch (error) {
     res
@@ -196,13 +210,11 @@ const getAttempts = async (req, res) => {
 };
 
 const getAttemptById = async (req, res) => {
-  const { id } = req.params;
-  const aid = Number(id);
-  const studentId = req.user.id;
+  const aid = Number(req.params.id);
+  const userId = req.user.id;
 
-  if (isNaN(aid)) {
+  if (isNaN(aid))
     return res.status(400).json({ message: "ID de intento inválido." });
-  }
 
   try {
     const attempt = await prisma.examAttempt.findUnique({
@@ -213,21 +225,22 @@ const getAttemptById = async (req, res) => {
           include: {
             questions: { orderBy: { order: "asc" } },
             module: {
-              include: { course: { select: { title: true } } },
+              include: {
+                course: { select: { title: true, professorId: true } },
+              },
             },
           },
         },
       },
     });
 
-    if (!attempt) {
+    if (!attempt)
       return res.status(404).json({ message: "Intento no encontrado." });
-    }
 
-    const isOwner = attempt.studentId === studentId;
-    const isProfessor = attempt.exam.module.course.professorId === studentId;
+    const isOwner = attempt.studentId === userId;
+    const isProfessor = attempt.exam.module.course.professorId === userId;
 
-    if (!isOwner && !isProfessor) {
+    if (!isOwner && !isProfessor && req.user.role !== "ADMIN") {
       return res
         .status(403)
         .json({ message: "No tienes acceso a este intento." });
@@ -241,10 +254,50 @@ const getAttemptById = async (req, res) => {
   }
 };
 
+const resetAttempts = async (req, res) => {
+  const eid = Number(req.params.examId);
+  const sid = Number(req.params.studentId);
+
+  if (isNaN(eid) || isNaN(sid))
+    return res.status(400).json({ message: "IDs inválidos." });
+
+  try {
+    const exam = await prisma.exam.findUnique({
+      where: { id: eid },
+      select: { authorId: true },
+    });
+    if (!exam)
+      return res.status(404).json({ message: "Examen no encontrado." });
+
+    if (
+      req.user.role !== "ADMIN" &&
+      !(req.user.role === "PROFESSOR" && exam.authorId === req.user.id)
+    ) {
+      return res
+        .status(403)
+        .json({ message: "No tienes permiso para reiniciar intentos." });
+    }
+
+    const deleted = await prisma.examAttempt.deleteMany({
+      where: { examId: eid, studentId: sid },
+    });
+
+    res.json({
+      message: `Intentos reiniciados para el estudiante ${sid}.`,
+      deleted: deleted.count,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error al reiniciar intentos.", error: error.message });
+  }
+};
+
 module.exports = {
   startAttempt,
   saveAnswers,
   submitExam,
   getAttempts,
   getAttemptById,
+  resetAttempts,
 };

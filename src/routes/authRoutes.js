@@ -1,3 +1,9 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: authRoutes.js
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");

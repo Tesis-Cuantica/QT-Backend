@@ -7,6 +7,8 @@ require("dotenv").config();
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const listRoutes = require("express-list-routes");
+
 const certificateRoutes = require("./routes/certificateRoutes");
 const authRoutes = require("./routes/authRoutes");
 const courseRoutes = require("./routes/courseRoutes");
@@ -19,26 +21,45 @@ const enrollmentRoutes = require("./routes/enrollmentRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const professorRoutes = require("./routes/professorRoutes");
+const studentRoutes = require("./routes/studentRoutes");
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/auth", authRoutes);
-app.use("/api/courses", courseRoutes);
-app.use("/api/modules", moduleRoutes);
-app.use("/api/lessons", lessonRoutes);
-app.use("/api/labs", labRoutes);
-app.use("/api/exams", examRoutes);
-app.use("/api/enrollments", enrollmentRoutes);
-app.use("/api/attempts", examAttemptRoutes);
-app.use("/api/certificates", certificateRoutes);
-app.use("/api/reports", reportRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/professor", professorRoutes);
+const routers = [
+  ["/api/auth", authRoutes],
+  ["/api/courses", courseRoutes],
+  ["/api/modules", moduleRoutes],
+  ["/api/lessons", lessonRoutes],
+  ["/api/labs", labRoutes],
+  ["/api/exams", examRoutes],
+  ["/api/enrollments", enrollmentRoutes],
+  ["/api/attempts", examAttemptRoutes],
+  ["/api/certificates", certificateRoutes],
+  ["/api/reports", reportRoutes],
+  ["/api/admin", adminRoutes],
+  ["/api/professor", professorRoutes],
+  ["/api/students", studentRoutes],
+];
+
+routers.forEach(([base, router]) => {
+  app.use(base, router);
+  console.log(`✅ Montado correctamente: ${base}`);
+});
+
 app.use("/public", express.static(path.join(__dirname, "../public")));
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "QuantumTec Backend is running" });
 });
+
+console.log("\n Endpoints detectados:");
+listRoutes(app, { prefix: "" });
+
+const fs = require("fs");
+const output = listRoutes(app, { prefix: "", logger: false });
+fs.writeFileSync("routes.json", JSON.stringify(output, null, 2));
+console.log("Endpoints guardados en routes.json\n");
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

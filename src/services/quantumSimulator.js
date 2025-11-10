@@ -1,3 +1,9 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: quantumSimulator.js
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const simulateCircuit = (circuitJSON) => {
   try {
     const circuit = JSON.parse(circuitJSON);

@@ -1,0 +1,268 @@
+### VARIABLES GLOBALES ###
+@host = http://localhost:5000/api
+@token_admin = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzYyNzk3MzQyLCJleHAiOjE3NjI4ODM3NDJ9.AZDv7bxSQatIfneNsm3rWUaZq_lhzZdg7WM8KYWP4EE
+@token_professor = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6IlBST0ZFU1NPUiIsImlhdCI6MTc2MjgwMjgzNywiZXhwIjoxNzYyODg5MjM3fQ.bKwYIzJvH2Lt4Gc5RxYOFIJkdAYgaGBZjQWOWX5U5iQ
+@token_student = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6IlNUVURFTlQiLCJpYXQiOjE3NjI3OTY2MjUsImV4cCI6MTc2Mjg4MzAyNX0.HFctcrzDV7XuLc5gtEFHFsab5C3BLv-fTWwYr0kA410
+
+############################################################
+# 🧭 AUTHENTICATION
+############################################################
+
+### Registrar nuevo usuario (STUDENT)
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Nuevo Estudiante",
+  "email": "nuevo@quantumtec.com",
+  "password": "123456",
+  "role": "STUDENT"
+}
+
+### Login (recuperar token)
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "nuevo@quantumtec.com",
+  "password": "123456"
+}
+
+############################################################
+# 👑 ADMIN PANEL
+############################################################
+
+### Crear usuario por admin
+POST {{host}}/auth/admin/users
+Authorization: Bearer {{token_admin}}
+Content-Type: application/json
+
+{
+  "name": "Profesor Quantum",
+  "email": "prof@qt.com",
+  "password": "123456",
+  "role": "PROFESSOR"
+}
+
+### Listar todos los usuarios
+GET {{host}}/admin/users
+Authorization: Bearer {{token_admin}}
+
+### Crear curso nuevo
+POST {{host}}/admin/courses
+Authorization: Bearer {{token_admin}}
+Content-Type: application/json
+
+{
+  "title": "Fundamentos de Computación Cuántica",
+  "description": "Curso base de Quantum Computing",
+  "professorId": 3,
+  "status": "DRAFT"
+}
+
+### Ver curso por ID
+GET {{host}}/admin/courses/1
+Authorization: Bearer {{token_admin}}
+
+### Actualizar curso
+PATCH {{host}}/admin/courses/1
+Authorization: Bearer {{token_admin}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+### Eliminar curso
+DELETE {{host}}/admin/courses/2
+Authorization: Bearer {{token_admin}}
+
+############################################################
+# 👩‍🏫 PROFESSOR PANEL
+############################################################
+
+### Ver mis cursos
+GET {{host}}/professor/courses
+Authorization: Bearer {{token_professor}}
+
+### Crear módulo en curso
+POST {{host}}/modules/courses/1
+Authorization: Bearer {{token_professor}}
+Content-Type: application/json
+
+{
+  "title": "Módulo 1: Qubits y Superposición"
+}
+
+### Crear lección
+POST {{host}}/lessons/modules/1
+Authorization: Bearer {{token_professor}}
+Content-Type: application/json
+
+{
+  "title": "Lección 1: Introducción a los Qubits",
+  "type": "VIDEO",
+  "content": "https://youtu.be/demo"
+}
+
+### Crear laboratorio
+POST {{host}}/labs/modules/1
+Authorization: Bearer {{token_professor}}
+Content-Type: application/json
+
+{
+  "title": "Lab 1: Puerta Hadamard",
+  "circuitJSON": "{\"gates\": [{\"type\":\"H\",\"target\":0}], \"qubits\":1}"
+}
+
+### Crear examen
+POST {{host}}/exams/modules/1
+Authorization: Bearer {{token_professor}}
+Content-Type: application/json
+
+{
+  "title": "Evaluación de Qubits",
+  "timeLimit": 45,
+  "maxAttempts": 2,
+  "published": true,
+  "questions": [
+    {
+      "type": "SHORT_ANSWER",
+      "text": "¿Qué es un qubit?",
+      "correct": "unidad básica de información cuántica",
+      "points": 10
+    }
+  ]
+}
+
+### Ver intentos pendientes de calificar
+GET {{host}}/professor/attempts/pending
+Authorization: Bearer {{token_professor}}
+
+### Calificar manualmente un intento
+POST {{host}}/professor/attempts/1/grade
+Authorization: Bearer {{token_professor}}
+Content-Type: application/json
+
+{
+  "score": 80,
+  "feedback": "Buena explicación."
+}
+
+############################################################
+# 👨‍🎓 STUDENT PANEL
+############################################################
+
+### Inscribirse a curso
+POST {{host}}/enrollments
+Authorization: Bearer {{token_student}}
+Content-Type: application/json
+
+{
+  "courseId": 1
+}
+
+### Ver mis cursos inscritos
+GET {{host}}/enrollments
+Authorization: Bearer {{token_student}}
+
+### Ver módulos del curso
+GET {{host}}/modules/courses/1
+Authorization: Bearer {{token_student}}
+
+### Iniciar intento de examen
+POST {{host}}/attempts
+Authorization: Bearer {{token_student}}
+Content-Type: application/json
+
+{
+  "examId": 1
+}
+
+### Guardar respuestas
+POST {{host}}/attempts/save
+Authorization: Bearer {{token_student}}
+Content-Type: application/json
+
+{
+  "attemptId": 7,
+  "answers": {
+    "12": "unidad básica de información cuántica"
+  }
+}
+
+### Enviar examen
+POST {{host}}/attempts/submit
+Authorization: Bearer {{token_student}}
+Content-Type: application/json
+
+{
+  "attemptId": 7
+}
+
+### Descargar certificado
+GET {{host}}/certificates/download/certificado_123.pdf
+Authorization: Bearer {{token_student}}
+
+############################################################
+# 📊 DASHBOARDS Y REPORTES
+############################################################
+
+### Dashboard del alumno
+GET {{host}}/reports/student
+Authorization: Bearer {{token_student}}
+
+### Dashboard del profesor
+GET {{host}}/reports/professor
+Authorization: Bearer {{token_professor}}
+
+### Dashboard del admin
+GET {{host}}/reports/admin
+Authorization: Bearer {{token_admin}}
+
+############################################################
+# ⚙️ EXTRA - UTILIDADES
+############################################################
+
+### Health check
+GET {{host}}/health
+
+
+
+
+
+
+### Obtener intento de examen por ID
+GET {{host}}/attempts/exams/9
+Authorization: Bearer {{token_student}}
+
+### Iniciar intento de examen (nuevo intento)
+POST {{host}}/attempts
+Authorization: Bearer {{token_student}}
+Content-Type: application/json
+
+{
+  "examId": 9
+}
+
+
+### Guardar respuestas (nuevo intento)
+POST {{host}}/attempts/save
+Authorization: Bearer {{token_student}}
+Content-Type: application/json
+
+{
+  "attemptId": 7,
+  "answers": {
+    "12": "unidad básica de información cuántica"
+  }
+}
+
+
+### Generar certificado de un curso
+POST {{host}}/certificates/courses/1
+Authorization: Bearer {{token_student}}
+
+### Completar curso
+PATCH {{host}}/students/enrollments/1/complete
+Authorization: Bearer {{token_student}}

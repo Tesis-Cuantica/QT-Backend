@@ -1,3 +1,9 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: adminRoutes.js
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const express = require("express");
 const router = express.Router();
 const adminController = require("../controllers/adminController");
