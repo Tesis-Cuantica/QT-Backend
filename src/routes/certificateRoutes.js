@@ -1,18 +1,14 @@
 const express = require("express");
-const { protect, authorize } = require("../middleware/auth");
-const {
-  generateCertificateForCourse,
-  downloadCertificate,
-} = require("../controllers/certificateController");
-
 const router = express.Router();
+const certificateController = require("../controllers/certificateController");
+const { protect } = require("../middleware/auth");
 
-router.post(
-  "/course/:courseId",
-  protect,
-  authorize("STUDENT"),
-  generateCertificateForCourse
-);
-router.get("/download/:fileName", protect, downloadCertificate);
+router
+  .route("/courses/:courseId")
+  .post(protect, certificateController.generateCertificateForCourse);
+
+router
+  .route("/download/:fileName")
+  .get(certificateController.downloadCertificate);
 
 module.exports = router;

@@ -1,3 +1,8 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: authController.js
+// ═══════════════════════════════════════════════════════════════════════════════
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const prisma = require("../models");

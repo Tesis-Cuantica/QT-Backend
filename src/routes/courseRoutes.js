@@ -1,20 +1,17 @@
 const express = require("express");
-const { protect, authorize } = require("../middleware/auth");
-const {
-  createCourse,
-  getCourses,
-  getCourseById,
-  updateCourse,
-  deleteCourse,
-} = require("../controllers/courseController");
-
 const router = express.Router();
+const courseController = require("../controllers/courseController");
+const { protect } = require("../middleware/auth");
 
-router.get("/", protect, getCourses);
-router.get("/:id", protect, getCourseById);
+router
+  .route("/")
+  .get(protect, courseController.getCourses)
+  .post(protect, courseController.createCourse);
 
-router.post("/", protect, authorize("PROFESSOR", "ADMIN"), createCourse);
-router.put("/:id", protect, authorize("PROFESSOR", "ADMIN"), updateCourse);
-router.delete("/:id", protect, authorize("PROFESSOR", "ADMIN"), deleteCourse);
+router
+  .route("/:id")
+  .get(protect, courseController.getCourseById)
+  .patch(protect, courseController.updateCourse)
+  .delete(protect, courseController.deleteCourse);
 
 module.exports = router;

@@ -1,3 +1,8 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: server.js
+// ═══════════════════════════════════════════════════════════════════════════════
 require("dotenv").config();
 const path = require("path");
 const express = require("express");

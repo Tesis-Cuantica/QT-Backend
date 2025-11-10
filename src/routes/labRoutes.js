@@ -1,25 +1,21 @@
 const express = require("express");
-const { protect, authorize } = require("../middleware/auth");
-const {
-  createLab,
-  getLabsByModule,
-  getLabById,
-  updateLab,
-  deleteLab,
-  runSimulation,
-  saveStudentLab,
-} = require("../controllers/labController");
-
 const router = express.Router();
+const labController = require("../controllers/labController");
+const { protect } = require("../middleware/auth");
 
-router.get("/module/:moduleId", protect, getLabsByModule);
-router.get("/:id", protect, getLabById);
+router
+  .route("/modules/:moduleId")
+  .get(protect, labController.getLabsByModule)
+  .post(protect, labController.createLab);
 
-router.post("/simulate", protect, runSimulation);
-router.post("/save", protect, saveStudentLab);
+router
+  .route("/:id")
+  .get(protect, labController.getLabById)
+  .patch(protect, labController.updateLab)
+  .delete(protect, labController.deleteLab);
 
-router.post("/", protect, authorize("PROFESSOR", "ADMIN"), createLab);
-router.put("/:id", protect, authorize("PROFESSOR", "ADMIN"), updateLab);
-router.delete("/:id", protect, authorize("PROFESSOR", "ADMIN"), deleteLab);
+router.route("/simulate").post(protect, labController.runSimulation);
+
+router.route("/student-labs").post(protect, labController.saveStudentLab);
 
 module.exports = router;

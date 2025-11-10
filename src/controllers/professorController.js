@@ -1,3 +1,8 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: professorController.js
+// ═══════════════════════════════════════════════════════════════════════════════
 const prisma = require("../models");
 
 const getMyCourses = async (req, res) => {
@@ -22,6 +27,9 @@ const getMyCourses = async (req, res) => {
             student: { select: { id: true, name: true, email: true } },
           },
         },
+        _count: {
+          select: { enrollments: true, modules: true },
+        },
       },
     });
     res.json(courses);
@@ -31,6 +39,7 @@ const getMyCourses = async (req, res) => {
       .json({ message: "Error al obtener tus cursos.", error: error.message });
   }
 };
+
 const getPendingAttempts = async (req, res) => {
   try {
     const attempts = await prisma.examAttempt.findMany({
@@ -45,12 +54,22 @@ const getPendingAttempts = async (req, res) => {
       },
       include: {
         student: { select: { name: true } },
-        exam: { select: { title: true } },
+        exam: {
+          select: { title: true, id: true },
+          include: {
+            module: {
+              select: { title: true },
+              include: {
+                course: { select: { title: true } },
+              },
+            },
+          },
+        },
       },
+      orderBy: { submittedAt: "desc" },
     });
     res.json(attempts);
   } catch (error) {
-    console.error("Error en getPendingAttempts:", error);
     res.status(500).json({
       message: "Error al obtener intentos pendientes.",
       error: error.message,
@@ -60,10 +79,19 @@ const getPendingAttempts = async (req, res) => {
 
 const gradeAttempt = async (req, res) => {
   const { attemptId, feedback, questionGrades } = req.body;
+  const aid = Number(attemptId);
+
+  if (isNaN(aid)) {
+    return res.status(400).json({ message: "ID de intento inválido." });
+  }
+
+  if (typeof questionGrades !== "object" || !questionGrades) {
+    return res.status(400).json({ message: "Calificaciones inválidas." });
+  }
 
   try {
     const attempt = await prisma.examAttempt.findUnique({
-      where: { id: parseInt(attemptId) },
+      where: { id: aid },
       include: {
         exam: {
           include: {
@@ -80,32 +108,64 @@ const gradeAttempt = async (req, res) => {
         .status(403)
         .json({ message: "No puedes calificar este intento." });
     }
+    if (attempt.status !== "SUBMITTED") {
+      return res.status(400).json({ message: "El intento ya fue calificado." });
+    }
 
-    const answers = JSON.parse(attempt.answers);
+    const answers = JSON.parse(attempt.answers || "{}");
     let totalPoints = 0;
     let earnedPoints = 0;
 
     for (const q of attempt.exam.questions) {
+      totalPoints += q.points;
+
       if (q.type === "ESSAY") {
-        const grade = questionGrades[q.id] || 0;
+        const grade = parseFloat(questionGrades[q.id]);
+        if (isNaN(grade) || grade < 0 || grade > q.points) {
+          return res.status(400).json({
+            message: `Calificación inválida para pregunta ${q.id}. Rango: 0-${q.points}.`,
+          });
+        }
         earnedPoints += grade;
       } else {
-        if (answers[q.id] && JSON.stringify(answers[q.id]) === q.correct) {
-          earnedPoints += q.points;
+        const userAnswer = answers[q.id];
+        let correct = false;
+
+        if (q.type === "SHORT_ANSWER") {
+          const expected =
+            typeof q.correct === "string" ? q.correct.trim().toLowerCase() : "";
+          const given = userAnswer
+            ? String(userAnswer).trim().toLowerCase()
+            : "";
+          correct = given === expected;
+        } else if (["MULTIPLE_CHOICE", "QUANTUM_SIMULATION"].includes(q.type)) {
+          const expected = JSON.parse(q.correct);
+          const given = userAnswer;
+
+          if (Array.isArray(expected) && Array.isArray(given)) {
+            correct =
+              JSON.stringify(expected.sort()) === JSON.stringify(given.sort());
+          } else {
+            correct = JSON.stringify(expected) === JSON.stringify(given);
+          }
         }
+
+        if (correct) earnedPoints += q.points;
       }
-      totalPoints += q.points;
     }
 
-    const score = (earnedPoints / totalPoints) * 100;
+    const score = parseFloat(
+      ((earnedPoints / (totalPoints || 1)) * 100).toFixed(2)
+    );
 
     const updated = await prisma.examAttempt.update({
-      where: { id: parseInt(attemptId) },
+      where: { id: aid },
       data: {
         score,
         status: "GRADED",
-        feedback,
+        feedback: feedback || null,
       },
+      include: { exam: true, student: true },
     });
 
     res.json(updated);

@@ -1,25 +1,34 @@
 const express = require("express");
-const { protect, authorize } = require("../middleware/auth");
-const {
-  getUsers,
-  updateUserRole,
-  deleteUser,
-  getAllCourses,
-  updateCourseStatus,
-} = require("../controllers/adminController");
-
 const router = express.Router();
+const adminController = require("../controllers/adminController");
+const { protect, authorize } = require("../middleware/auth");
 
-router.get("/users", protect, authorize("ADMIN"), getUsers);
-router.patch("/users/:id/role", protect, authorize("ADMIN"), updateUserRole);
-router.delete("/users/:id", protect, authorize("ADMIN"), deleteUser);
+router
+  .route("/users")
+  .get(protect, authorize("ADMIN"), adminController.getUsers)
+  .post(protect, authorize("ADMIN"), adminController.createUser);
 
-router.get("/courses", protect, authorize("ADMIN"), getAllCourses);
-router.patch(
-  "/courses/:id/status",
-  protect,
-  authorize("ADMIN"),
-  updateCourseStatus
-);
+router
+  .route("/users/:id/role")
+  .patch(protect, authorize("ADMIN"), adminController.updateUserRole);
+
+router
+  .route("/users/:id")
+  .delete(protect, authorize("ADMIN"), adminController.deleteUser);
+
+router
+  .route("/courses")
+  .get(protect, authorize("ADMIN"), adminController.getAllCourses)
+  .post(protect, authorize("ADMIN"), adminController.createCourse);
+
+router
+  .route("/courses/:id")
+  .get(protect, authorize("ADMIN"), adminController.getCourseById)
+  .patch(protect, authorize("ADMIN"), adminController.updateCourse)
+  .delete(protect, authorize("ADMIN"), adminController.deleteCourse);
+
+router
+  .route("/courses/:id/status")
+  .patch(protect, authorize("ADMIN"), adminController.updateCourseStatus);
 
 module.exports = router;

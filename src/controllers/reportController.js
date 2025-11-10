@@ -1,44 +1,49 @@
 const prisma = require("../models");
 
 const getStudentDashboard = async (req, res) => {
-  const studentId = parseInt(req.user.id);
+  const studentId = Number(req.user.id);
+  if (isNaN(studentId)) {
+    return res.status(400).json({ message: "ID de estudiante inválido." });
+  }
 
   try {
-    const enrollments = await prisma.enrollment.findMany({
-      where: { studentId },
-      include: {
-        course: {
-          include: {
-            modules: {
-              orderBy: { order: "asc" },
-              include: {
-                exams: {
-                  include: {
-                    attempts: {
-                      where: { studentId },
-                      orderBy: { submittedAt: "desc" },
-                      take: 1,
+    const [enrollments, labCounts] = await Promise.all([
+      prisma.enrollment.findMany({
+        where: { studentId },
+        include: {
+          course: {
+            include: {
+              modules: {
+                orderBy: { order: "asc" },
+                include: {
+                  exams: {
+                    include: {
+                      attempts: {
+                        where: { studentId },
+                        orderBy: { submittedAt: "desc" },
+                        take: 1,
+                      },
                     },
                   },
-                },
-                _count: {
-                  select: { lessons: true, labs: true },
+                  _count: {
+                    select: { lessons: true, labs: true },
+                  },
                 },
               },
             },
           },
         },
-      },
-    });
+      }),
+      prisma.studentLab.groupBy({
+        by: ["passed"],
+        where: { studentId },
+        _count: { _all: true },
+      }),
+    ]);
 
-    const totalLabs = await prisma.studentLab.count({
-      where: { studentId },
-    });
-
-    const passedLabs = await prisma.studentLab.count({
-      where: { studentId, passed: true },
-    });
-
+    const totalLabs = labCounts.reduce((sum, g) => sum + g._count._all, 0);
+    const passedLabs =
+      labCounts.find((g) => g.passed === true)?._count._all || 0;
     const successRate =
       totalLabs > 0
         ? parseFloat(((passedLabs / totalLabs) * 100).toFixed(2))
@@ -63,17 +68,20 @@ const getStudentDashboard = async (req, res) => {
           title: m.title,
           lessonsTotal: m._count.lessons,
           labsTotal: m._count.labs,
-          examScore: m.exams[0]?.attempts[0]?.score || null,
+          examScore: m.exams.reduce((best, exam) => {
+            const latest = exam.attempts[0];
+            return latest && latest.score > best ? latest.score : best;
+          }, null),
         })),
       })),
       labStats: {
         totalLabs,
+        passedLabs,
         successRate,
       },
       certificates,
     });
   } catch (error) {
-    console.error("Error en getStudentDashboard:", error);
     res.status(500).json({
       message: "Error al obtener el dashboard del estudiante.",
       error: error.message,
@@ -82,18 +90,16 @@ const getStudentDashboard = async (req, res) => {
 };
 
 const getProfessorDashboard = async (req, res) => {
-  const professorId = parseInt(req.user.id);
+  const professorId = Number(req.user.id);
+  if (isNaN(professorId)) {
+    return res.status(400).json({ message: "ID de profesor inválido." });
+  }
 
   try {
     const courses = await prisma.course.findMany({
       where: { professorId },
       include: {
         _count: { select: { enrollments: true, modules: true } },
-        enrollments: {
-          include: {
-            student: { select: { name: true, email: true } },
-          },
-        },
         modules: {
           include: {
             exams: {
@@ -116,11 +122,10 @@ const getProfessorDashboard = async (req, res) => {
       course.modules.forEach((module) => {
         module.exams.forEach((exam) => {
           totalAttempts += exam._count.attempts;
-          const passed = exam.attempts.filter(
+          passedAttempts += exam.attempts.filter(
             (attempt) =>
               attempt.score !== null && attempt.score >= exam.passingScore
           ).length;
-          passedAttempts += passed;
         });
       });
 
@@ -138,7 +143,6 @@ const getProfessorDashboard = async (req, res) => {
 
     res.json({ courses: courseStats });
   } catch (error) {
-    console.error("Error en getProfessorDashboard:", error);
     res.status(500).json({
       message: "Error al obtener el dashboard del profesor.",
       error: error.message,
@@ -148,37 +152,43 @@ const getProfessorDashboard = async (req, res) => {
 
 const getAdminDashboard = async (req, res) => {
   try {
-    const userStats = await prisma.user.groupBy({
-      by: ["role"],
-      _count: { _all: true },
-    });
-
-    const totalCourses = await prisma.course.count();
-    const activeCourses = await prisma.course.count({
-      where: { status: "ACTIVE" },
-    });
-
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-    const examsLast7Days = await prisma.examAttempt.count({
-      where: { submittedAt: { gte: sevenDaysAgo } },
-    });
-
-    const labExecutionsLast7Days = await prisma.studentLab.count({
-      where: { createdAt: { gte: sevenDaysAgo } },
-    });
-
-    const professors = await prisma.user.findMany({
-      where: { role: "PROFESSOR" },
-      include: {
-        coursesCreated: {
-          where: { status: "ACTIVE" },
-          include: {
-            _count: { select: { enrollments: true } },
+    const [
+      userStats,
+      courseCount,
+      activeCourseCount,
+      recentCounts,
+      professors,
+    ] = await Promise.all([
+      prisma.user.groupBy({
+        by: ["role"],
+        _count: { _all: true },
+      }),
+      prisma.course.count(),
+      prisma.course.count({ where: { status: "ACTIVE" } }),
+      (async () => {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const [exams, labs] = await Promise.all([
+          prisma.examAttempt.count({
+            where: { submittedAt: { gte: sevenDaysAgo } },
+          }),
+          prisma.studentLab.count({
+            where: { createdAt: { gte: sevenDaysAgo } },
+          }),
+        ]);
+        return { exams, labs };
+      })(),
+      prisma.user.findMany({
+        where: { role: "PROFESSOR" },
+        include: {
+          coursesCreated: {
+            where: { status: "ACTIVE" },
+            include: {
+              _count: { select: { enrollments: true } },
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     const professorPerformance = professors.map((p) => ({
       professorId: p.id,
@@ -195,16 +205,15 @@ const getAdminDashboard = async (req, res) => {
         (acc, u) => ({ ...acc, [u.role]: u._count._all }),
         {}
       ),
-      totalCourses,
-      activeCourses,
+      totalCourses: courseCount,
+      activeCourses: activeCourseCount,
       recentActivity: {
-        examsLast7Days,
-        labExecutionsLast7Days,
+        examsLast7Days: recentCounts.exams,
+        labExecutionsLast7Days: recentCounts.labs,
       },
       professorPerformance,
     });
   } catch (error) {
-    console.error("Error en getAdminDashboard:", error);
     res.status(500).json({
       message: "Error al obtener el dashboard del administrador.",
       error: error.message,

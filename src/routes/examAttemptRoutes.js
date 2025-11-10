@@ -1,17 +1,16 @@
 const express = require("express");
-const { protect } = require("../middleware/auth");
-const {
-  startAttempt,
-  saveAnswers,
-  submitExam,
-  getAttempts,
-} = require("../controllers/examAttemptController");
-
 const router = express.Router();
+const examAttemptController = require("../controllers/examAttemptController");
+const { protect } = require("../middleware/auth");
 
-router.post("/start", protect, startAttempt);
-router.post("/save", protect, saveAnswers);
-router.post("/submit", protect, submitExam);
-router.get("/exam/:examId", protect, getAttempts);
+router.route("/").post(protect, examAttemptController.startAttempt);
+
+router.route("/save").post(protect, examAttemptController.saveAnswers);
+
+router.route("/submit").post(protect, examAttemptController.submitExam);
+
+router.route("/exams/:examId").get(protect, examAttemptController.getAttempts);
+
+router.route("/:id").get(protect, examAttemptController.getAttemptById);
 
 module.exports = router;

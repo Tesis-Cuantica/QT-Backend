@@ -1,20 +1,22 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: lessonRoutes.js
+// ═══════════════════════════════════════════════════════════════════════════════
 const express = require("express");
-const { protect, authorize } = require("../middleware/auth");
-const {
-  createLesson,
-  getLessonsByModule,
-  getLessonById,
-  updateLesson,
-  deleteLesson,
-} = require("../controllers/lessonController");
-
 const router = express.Router();
+const lessonController = require("../controllers/lessonController");
+const { protect } = require("../middleware/auth");
 
-router.get("/module/:moduleId", protect, getLessonsByModule);
-router.get("/:id", protect, getLessonById);
+router
+  .route("/modules/:moduleId")
+  .get(protect, lessonController.getLessonsByModule)
+  .post(protect, lessonController.createLesson);
 
-router.post("/", protect, authorize("PROFESSOR", "ADMIN"), createLesson);
-router.put("/:id", protect, authorize("PROFESSOR", "ADMIN"), updateLesson);
-router.delete("/:id", protect, authorize("PROFESSOR", "ADMIN"), deleteLesson);
+router
+  .route("/:id")
+  .get(protect, lessonController.getLessonById)
+  .patch(protect, lessonController.updateLesson)
+  .delete(protect, lessonController.deleteLesson);
 
 module.exports = router;

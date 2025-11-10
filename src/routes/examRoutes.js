@@ -1,20 +1,17 @@
 const express = require("express");
-const { protect, authorize } = require("../middleware/auth");
-const {
-  createExam,
-  getExamsByModule,
-  getExamById,
-  updateExam,
-  deleteExam,
-} = require("../controllers/examController");
-
 const router = express.Router();
+const examController = require("../controllers/examController");
+const { protect } = require("../middleware/auth");
 
-router.get("/module/:moduleId", protect, getExamsByModule);
-router.get("/:id", protect, getExamById);
+router
+  .route("/modules/:moduleId")
+  .get(protect, examController.getExamsByModule)
+  .post(protect, examController.createExam);
 
-router.post("/", protect, authorize("PROFESSOR", "ADMIN"), createExam);
-router.put("/:id", protect, authorize("PROFESSOR", "ADMIN"), updateExam);
-router.delete("/:id", protect, authorize("PROFESSOR", "ADMIN"), deleteExam);
+router
+  .route("/:id")
+  .get(protect, examController.getExamById)
+  .patch(protect, examController.updateExam)
+  .delete(protect, examController.deleteExam);
 
 module.exports = router;

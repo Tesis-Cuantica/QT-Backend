@@ -1,6 +1,12 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-10
+// Archivo: certificateController.js
+// ═══════════════════════════════════════════════════════════════════════════════
 const prisma = require("../models");
-const { generateCertificate } = require("../services/pdfService");
+const fs = require("fs");
 const path = require("path");
+const { generateCertificate } = require("../services/pdfService");
 
 const generateCertificateForCourse = async (req, res) => {
   const { courseId } = req.params;
@@ -52,6 +58,11 @@ const generateCertificateForCourse = async (req, res) => {
 
 const downloadCertificate = async (req, res) => {
   const { fileName } = req.params;
+
+  if (!/^[a-zA-Z0-9_-]+\.pdf$/.test(fileName)) {
+    return res.status(400).json({ message: "Nombre de archivo inválido." });
+  }
+
   const filePath = path.join(__dirname, "../../public/certificates", fileName);
 
   if (!fs.existsSync(filePath)) {
@@ -62,8 +73,6 @@ const downloadCertificate = async (req, res) => {
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   res.sendFile(filePath);
 };
-
-const fs = require("fs");
 
 module.exports = {
   generateCertificateForCourse,
