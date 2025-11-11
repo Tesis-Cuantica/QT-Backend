@@ -1,132 +1,156 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-11
+// Archivo: reportController.js
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const prisma = require("../models");
 
-const getAdminDashboard = async (req, res) => {
+const getAdminReport = async (req, res) => {
   try {
-    const totalUsers = await prisma.user.count();
-    const totalCourses = await prisma.course.count();
-    const totalEnrollments = await prisma.enrollment.count();
-    const totalExams = await prisma.exam.count();
+    const [users, courses, modules, labs, exams, attempts, enrollments] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.course.count(),
+        prisma.module.count(),
+        prisma.quantumLab.count(),
+        prisma.exam.count(),
+        prisma.examAttempt.count(),
+        prisma.enrollment.count(),
+      ]);
+
+    const avgScore =
+      (
+        await prisma.examAttempt.aggregate({
+          _avg: { score: true },
+        })
+      )._avg.score || 0;
 
     res.json({
-      totalUsers,
-      totalCourses,
-      totalEnrollments,
-      totalExams,
+      users,
+      courses,
+      modules,
+      labs,
+      exams,
+      enrollments,
+      attempts,
+      averageScore: avgScore.toFixed(2),
     });
   } catch (error) {
     res.status(500).json({
-      message: "Error al obtener estadísticas.",
+      message: "Error al generar reporte global.",
       error: error.message,
     });
   }
 };
 
-const getStudentProgress = async (req, res) => {
+const getProfessorReport = async (req, res) => {
   try {
-    const studentId = req.user.id;
+    const professorId =
+      req.user.role === "PROFESSOR"
+        ? req.user.id
+        : Number(req.params.id) || req.user.id;
+
+    const courses = await prisma.course.findMany({
+      where: { professorId },
+      include: {
+        _count: {
+          select: {
+            enrollments: true,
+            modules: true,
+          },
+        },
+        modules: {
+          include: {
+            exams: { include: { attempts: true } },
+          },
+        },
+      },
+    });
+
+    const summary = courses.map((c) => {
+      const allAttempts = c.modules.flatMap((m) =>
+        m.exams.flatMap((e) => e.attempts)
+      );
+      const avgScore =
+        allAttempts.length > 0
+          ? (
+              allAttempts.reduce((acc, a) => acc + (a.score || 0), 0) /
+              allAttempts.length
+            ).toFixed(2)
+          : 0;
+      return {
+        courseId: c.id,
+        title: c.title,
+        students: c._count.enrollments,
+        modules: c._count.modules,
+        averageScore: avgScore,
+      };
+    });
+
+    res.json({ professorId, courses: summary });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al generar reporte del profesor.",
+      error: error.message,
+    });
+  }
+};
+
+const getStudentReport = async (req, res) => {
+  try {
+    const studentId =
+      req.user.role === "STUDENT"
+        ? req.user.id
+        : Number(req.params.id) || req.user.id;
 
     const enrollments = await prisma.enrollment.findMany({
       where: { studentId },
       include: {
         course: {
-          include: {
-            modules: {
-              include: {
-                lessons: true,
-                labs: true,
-                exams: true,
-              },
-            },
-          },
+          select: { id: true, title: true, level: true },
         },
       },
     });
 
-    const formatted = enrollments.map((enrollment) => {
-      const totalModules = enrollment.course.modules.length;
-      const completedModules =
-        enrollment.progress >= 100
-          ? totalModules
-          : Math.floor((totalModules * enrollment.progress) / 100);
-      return {
-        course: enrollment.course.title,
-        progress: enrollment.progress,
-        completedModules,
-        totalModules,
-        completed: enrollment.completed,
-      };
+    const attempts = await prisma.examAttempt.findMany({
+      where: { studentId },
+      include: { exam: { select: { title: true } } },
     });
 
-    res.json(formatted);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error al obtener progreso.", error: error.message });
-  }
-};
+    const avgScore =
+      attempts.length > 0
+        ? (
+            attempts.reduce((acc, a) => acc + (a.score || 0), 0) /
+            attempts.length
+          ).toFixed(2)
+        : 0;
 
-const getProfessorDashboard = async (req, res) => {
-  try {
-    const courses = await prisma.course.findMany({
-      where: { professorId: req.user.id },
-      include: {
-        _count: { select: { enrollments: true, modules: true } },
-        modules: {
-          include: {
-            exams: {
-              include: {
-                attempts: {
-                  where: { status: "GRADED" },
-                  select: { id: true, score: true },
-                },
-              },
-            },
-          },
-        },
-      },
+    const completed = enrollments.filter((e) => e.completed).length;
+
+    res.json({
+      studentId,
+      totalCourses: enrollments.length,
+      completedCourses: completed,
+      progress: ((completed / (enrollments.length || 1)) * 100).toFixed(2),
+      averageScore: avgScore,
+      attempts: attempts.map((a) => ({
+        id: a.id,
+        exam: a.exam.title,
+        score: a.score,
+        status: a.status,
+      })),
     });
-
-    const data = courses.map((course) => {
-      let totalExams = 0;
-      let totalAttempts = 0;
-      let avgScore = 0;
-
-      course.modules.forEach((mod) => {
-        mod.exams.forEach((exam) => {
-          totalExams++;
-          totalAttempts += exam.attempts.length;
-          const scores = exam.attempts.map((a) => a.score || 0);
-          if (scores.length > 0) {
-            avgScore += scores.reduce((sum, s) => sum + s, 0) / scores.length;
-          }
-        });
-      });
-
-      const averageScore =
-        totalExams > 0 ? parseFloat((avgScore / totalExams).toFixed(2)) : 0;
-
-      return {
-        id: course.id,
-        title: course.title,
-        totalStudents: course._count.enrollments,
-        totalModules: course._count.modules,
-        totalExams,
-        totalAttempts,
-        averageScore,
-      };
-    });
-
-    res.json(data);
   } catch (error) {
     res.status(500).json({
-      message: "Error al obtener el dashboard del profesor.",
+      message: "Error al generar reporte del estudiante.",
       error: error.message,
     });
   }
 };
 
 module.exports = {
-  getAdminDashboard,
-  getStudentProgress,
-  getProfessorDashboard,
+  getAdminReport,
+  getProfessorReport,
+  getStudentReport,
 };

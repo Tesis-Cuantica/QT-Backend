@@ -6,34 +6,39 @@
 
 const prisma = require("../models");
 
+const canManageCourse = (user, courseProfessorId) =>
+  user.role === "ADMIN" ||
+  (user.role === "PROFESSOR" && user.id === courseProfessorId);
+
 const createModule = async (req, res) => {
+  const courseId = Number(req.params.courseId);
   const { title, order } = req.body;
-  const { courseId } = req.params;
-  const cid = Number(courseId);
-  if (isNaN(cid))
+  if (isNaN(courseId))
     return res.status(400).json({ message: "ID de curso inválido." });
   if (!title) return res.status(400).json({ message: "title es requerido." });
 
   try {
     const course = await prisma.course.findUnique({
-      where: { id: cid },
-      select: { professorId: true },
+      where: { id: courseId },
+      select: { id: true, status: true, professorId: true },
     });
     if (!course)
       return res.status(404).json({ message: "Curso no encontrado." });
-    if (req.user.role !== "ADMIN" && course.professorId !== req.user.id)
+    if (!canManageCourse(req.user, course.professorId))
       return res.status(403).json({
         message: "No tienes permiso para agregar módulos a este curso.",
       });
 
     const nextOrder =
-      order || (await prisma.module.count({ where: { courseId: cid } })) + 1;
+      typeof order === "number"
+        ? order
+        : (await prisma.module.count({ where: { courseId } })) + 1;
 
-    const module = await prisma.module.create({
-      data: { title, courseId: cid, order: nextOrder },
+    const mod = await prisma.module.create({
+      data: { title, courseId, order: nextOrder },
       include: { course: { select: { id: true, title: true } } },
     });
-    res.status(201).json(module);
+    res.status(201).json(mod);
   } catch (error) {
     if (error.code === "P2002")
       return res
@@ -46,14 +51,17 @@ const createModule = async (req, res) => {
 };
 
 const getModulesByCourse = async (req, res) => {
-  const cid = Number(req.params.courseId);
-  if (isNaN(cid))
+  const courseId = Number(req.params.courseId);
+  if (isNaN(courseId))
     return res.status(400).json({ message: "ID de curso inválido." });
 
   try {
     const course = await prisma.course.findUnique({
-      where: { id: cid },
-      include: { enrollments: { where: { studentId: req.user.id } } },
+      where: { id: courseId },
+      include: {
+        enrollments: { where: { studentId: req.user.id } },
+        professor: { select: { id: true } },
+      },
     });
     if (!course)
       return res.status(404).json({ message: "Curso no encontrado." });
@@ -66,8 +74,16 @@ const getModulesByCourse = async (req, res) => {
           .json({ message: "No tienes acceso a este curso." });
     }
 
+    if (req.user.role === "PROFESSOR" && course.professor.id !== req.user.id) {
+      if (course.status !== "ACTIVE") {
+        return res
+          .status(403)
+          .json({ message: "No tienes acceso a este curso." });
+      }
+    }
+
     const modules = await prisma.module.findMany({
-      where: { courseId: cid },
+      where: { courseId },
       orderBy: { order: "asc" },
       include: {
         lessons: { orderBy: { order: "asc" } },
@@ -84,35 +100,46 @@ const getModulesByCourse = async (req, res) => {
 };
 
 const getModuleById = async (req, res) => {
-  const mid = Number(req.params.id);
-  if (isNaN(mid))
+  const id = Number(req.params.id);
+  if (isNaN(id))
     return res.status(400).json({ message: "ID de módulo inválido." });
 
   try {
-    const module = await prisma.module.findUnique({
-      where: { id: mid },
+    const mod = await prisma.module.findUnique({
+      where: { id },
       include: {
         course: {
-          include: { enrollments: { where: { studentId: req.user.id } } },
-          select: { id: true, title: true, professorId: true, status: true },
+          include: {
+            enrollments: { where: { studentId: req.user.id } },
+          },
         },
         lessons: { orderBy: { order: "asc" } },
         labs: true,
         exams: true,
       },
     });
-    if (!module)
-      return res.status(404).json({ message: "Módulo no encontrado." });
+    if (!mod) return res.status(404).json({ message: "Módulo no encontrado." });
 
     if (req.user.role === "STUDENT") {
-      const isEnrolled = module.course.enrollments.length > 0;
-      if (!isEnrolled && module.course.status !== "ACTIVE")
+      const isEnrolled = mod.course.enrollments.length > 0;
+      if (!isEnrolled && mod.course.status !== "ACTIVE")
         return res
           .status(403)
           .json({ message: "No tienes acceso a este módulo." });
     }
 
-    res.json(module);
+    if (
+      req.user.role === "PROFESSOR" &&
+      mod.course.professorId !== req.user.id
+    ) {
+      if (mod.course.status !== "ACTIVE") {
+        return res
+          .status(403)
+          .json({ message: "No tienes acceso a este módulo." });
+      }
+    }
+
+    res.json(mod);
   } catch (error) {
     res
       .status(500)
@@ -121,33 +148,30 @@ const getModuleById = async (req, res) => {
 };
 
 const updateModule = async (req, res) => {
-  const mid = Number(req.params.id);
-  if (isNaN(mid))
-    return res.status(400).json({ message: "ID de módulo inválido." });
-
+  const id = Number(req.params.id);
   const { title, order } = req.body;
+  if (isNaN(id))
+    return res.status(400).json({ message: "ID de módulo inválido." });
 
   try {
     const existing = await prisma.module.findUnique({
-      where: { id: mid },
-      include: { course: { select: { professorId: true } } },
+      where: { id },
+      include: { course: { select: { professorId: true, id: true } } },
     });
     if (!existing)
       return res.status(404).json({ message: "Módulo no encontrado." });
-    if (
-      req.user.role !== "ADMIN" &&
-      existing.course.professorId !== req.user.id
-    )
+    if (!canManageCourse(req.user, existing.course.professorId))
       return res
         .status(403)
         .json({ message: "No tienes permiso para editar este módulo." });
 
+    const data = {};
+    if (typeof title === "string") data.title = title;
+    if (typeof order === "number") data.order = order;
+
     const updated = await prisma.module.update({
-      where: { id: mid },
-      data: {
-        ...(title && { title }),
-        ...(order && order !== existing.order && { order }),
-      },
+      where: { id },
+      data,
       include: { course: { select: { id: true, title: true } } },
     });
     res.json(updated);
@@ -164,34 +188,35 @@ const updateModule = async (req, res) => {
 };
 
 const deleteModule = async (req, res) => {
-  const mid = Number(req.params.id);
-  if (isNaN(mid))
+  const id = Number(req.params.id);
+  if (isNaN(id))
     return res.status(400).json({ message: "ID de módulo inválido." });
 
   try {
-    const module = await prisma.module.findUnique({
-      where: { id: mid },
-      include: { course: { select: { professorId: true } } },
+    const existing = await prisma.module.findUnique({
+      where: { id },
+      include: { course: { select: { professorId: true, id: true } } },
     });
-    if (!module)
+    if (!existing)
       return res.status(404).json({ message: "Módulo no encontrado." });
-    if (req.user.role !== "ADMIN" && module.course.professorId !== req.user.id)
+    if (!canManageCourse(req.user, existing.course.professorId))
       return res
         .status(403)
         .json({ message: "No tienes permiso para eliminar este módulo." });
 
     await prisma.$transaction(async (tx) => {
-      await tx.module.delete({ where: { id: mid } });
+      await tx.module.delete({ where: { id } });
       const remaining = await tx.module.findMany({
-        where: { courseId: module.courseId },
+        where: { courseId: existing.course.id },
         orderBy: { order: "asc" },
       });
       for (let i = 0; i < remaining.length; i++) {
-        if (remaining[i].order !== i + 1)
+        if (remaining[i].order !== i + 1) {
           await tx.module.update({
             where: { id: remaining[i].id },
             data: { order: i + 1 },
           });
+        }
       }
     });
 

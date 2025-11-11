@@ -1,41 +1,54 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // Autor:   Jairo Quispe Coa
-// Fecha:   2025-11-10
-// Archivo: examRoutes.js
+// Fecha:   2025-11-11
+// Archivo: attemptRoutes.js
 // ═══════════════════════════════════════════════════════════════════════════════
+
 const express = require("express");
 const router = express.Router();
-const examController = require("../controllers/examController");
+const attemptController = require("../controllers/attemptController");
 const { protect, authorize } = require("../middleware/auth");
 
-// Crear examen dentro de un módulo
 router.post(
-  "/modules/:moduleId",
+  "/exams/:examId",
   protect,
-  authorize("ADMIN", "PROFESSOR"),
-  examController.createExam
+  authorize("STUDENT"),
+  attemptController.createAttempt
 );
 
-// Listar exámenes por módulo
-router.get("/modules/:moduleId", protect, examController.getExamsByModule);
+router.get(
+  "/mine",
+  protect,
+  authorize("STUDENT"),
+  attemptController.getMyAttempts
+);
 
-// Obtener examen por ID
-router.get("/:id", protect, examController.getExamById);
+router.get(
+  "/",
+  protect,
+  authorize("ADMIN", "PROFESSOR"),
+  attemptController.getAllAttempts
+);
 
-// Actualizar examen
+router.get(
+  "/:id",
+  protect,
+  authorize("ADMIN", "PROFESSOR", "STUDENT"),
+  attemptController.getAttemptById
+);
+
 router.patch(
   "/:id",
   protect,
   authorize("ADMIN", "PROFESSOR"),
-  examController.updateExam
+  attemptController.updateAttempt
 );
 
-// Eliminar examen
 router.delete(
   "/:id",
   protect,
-  authorize("ADMIN", "PROFESSOR"),
-  examController.deleteExam
+  authorize("ADMIN"),
+  attemptController.deleteAttempt
 );
 
 module.exports = router;

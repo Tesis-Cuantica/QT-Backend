@@ -56,12 +56,8 @@
     "path": "\\~\\:id"
   },
   {
-    "method": "GET",
-    "path": "\\~\\modules\\:moduleId"
-  },
-  {
     "method": "POST",
-    "path": "\\~\\modules\\:moduleId"
+    "path": "\\~\\"
   },
   {
     "method": "GET",
@@ -77,10 +73,14 @@
   },
   {
     "method": "GET",
-    "path": "\\~\\modules\\:moduleId"
+    "path": "\\~\\module\\:moduleId"
   },
   {
     "method": "POST",
+    "path": "\\~\\"
+  },
+  {
+    "method": "GET",
     "path": "\\~\\modules\\:moduleId"
   },
   {
@@ -101,14 +101,14 @@
   },
   {
     "method": "POST",
-    "path": "\\~\\student-labs"
-  },
-  {
-    "method": "GET",
-    "path": "\\~\\modules\\:moduleId"
+    "path": "\\~\\student\\save"
   },
   {
     "method": "POST",
+    "path": "\\~\\modules\\:moduleId"
+  },
+  {
+    "method": "GET",
     "path": "\\~\\modules\\:moduleId"
   },
   {
@@ -145,30 +145,6 @@
   },
   {
     "method": "POST",
-    "path": "\\~\\"
-  },
-  {
-    "method": "POST",
-    "path": "\\~\\save"
-  },
-  {
-    "method": "POST",
-    "path": "\\~\\submit"
-  },
-  {
-    "method": "GET",
-    "path": "\\~\\exams\\:examId"
-  },
-  {
-    "method": "GET",
-    "path": "\\~\\:id"
-  },
-  {
-    "method": "DELETE",
-    "path": "\\~\\reset\\:examId\\:studentId"
-  },
-  {
-    "method": "POST",
     "path": "\\~\\courses\\:courseId"
   },
   {
@@ -177,7 +153,7 @@
   },
   {
     "method": "GET",
-    "path": "\\~\\student"
+    "path": "\\~\\admin"
   },
   {
     "method": "GET",
@@ -185,7 +161,15 @@
   },
   {
     "method": "GET",
-    "path": "\\~\\admin"
+    "path": "\\~\\professor\\:id"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\student"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\student\\:id"
   },
   {
     "method": "GET",
@@ -241,7 +225,51 @@
   },
   {
     "method": "PATCH",
+    "path": "\\~\\courses\\:id"
+  },
+  {
+    "method": "PATCH",
     "path": "\\~\\enrollments\\:courseId\\complete"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\exams\\:examId"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\exams\\:examId"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "POST",
+    "path": "\\~\\exams\\:examId"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\mine"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\"
+  },
+  {
+    "method": "GET",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "PATCH",
+    "path": "\\~\\:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "\\~\\:id"
   },
   {
     "method": "GET",

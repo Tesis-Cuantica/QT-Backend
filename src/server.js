@@ -22,6 +22,8 @@ const reportRoutes = require("./routes/reportRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const professorRoutes = require("./routes/professorRoutes");
 const studentRoutes = require("./routes/studentRoutes");
+const questionRoutes = require("./routes/questionRoutes");
+const attemptRoutes = require("./routes/attemptRoutes");
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -34,12 +36,13 @@ const routers = [
   ["/api/labs", labRoutes],
   ["/api/exams", examRoutes],
   ["/api/enrollments", enrollmentRoutes],
-  ["/api/attempts", examAttemptRoutes],
   ["/api/certificates", certificateRoutes],
   ["/api/reports", reportRoutes],
   ["/api/admin", adminRoutes],
   ["/api/professor", professorRoutes],
   ["/api/students", studentRoutes],
+  ["/api/questions", questionRoutes],
+  ["/api/attempts", attemptRoutes],
 ];
 
 routers.forEach(([base, router]) => {

@@ -6,17 +6,29 @@
 const express = require("express");
 const router = express.Router();
 const moduleController = require("../controllers/moduleController");
-const { protect } = require("../middleware/auth");
+const { protect, authorize } = require("../middleware/auth");
 
 router
   .route("/courses/:courseId")
   .get(protect, moduleController.getModulesByCourse)
-  .post(protect, moduleController.createModule);
+  .post(
+    protect,
+    authorize("ADMIN", "PROFESSOR"),
+    moduleController.createModule
+  );
 
 router
   .route("/:id")
   .get(protect, moduleController.getModuleById)
-  .patch(protect, moduleController.updateModule)
-  .delete(protect, moduleController.deleteModule);
+  .patch(
+    protect,
+    authorize("ADMIN", "PROFESSOR"),
+    moduleController.updateModule
+  )
+  .delete(
+    protect,
+    authorize("ADMIN", "PROFESSOR"),
+    moduleController.deleteModule
+  );
 
 module.exports = router;
