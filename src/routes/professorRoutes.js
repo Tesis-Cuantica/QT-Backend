@@ -21,4 +21,10 @@ router
   .route("/attempts/:attemptId/grade")
   .post(protect, authorize("PROFESSOR"), professorController.gradeAttempt);
 
+router.patch(
+  "/courses/:id",
+  protect,
+  authorize("PROFESSOR"),
+  professorController.updateMyCourse
+);
 module.exports = router;
