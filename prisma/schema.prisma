@@ -33,6 +33,7 @@ enum Role {
 model Course {
   id          Int      @id @default(autoincrement())
   title       String
+  code         String    @unique
   description String?
   level       Level    @default(BASIC)
   status      Status   @default(DRAFT)
@@ -188,6 +189,7 @@ model Enrollment {
   studentId   Int
   student     User     @relation(fields: [studentId], references: [id])
   courseId    Int
+  status     String    @default("PENDING")
   course      Course   @relation(fields: [courseId], references: [id])
   progress    Float    @default(0.0)
   completed   Boolean  @default(false)

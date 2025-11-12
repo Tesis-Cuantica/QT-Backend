@@ -16,7 +16,6 @@ const moduleRoutes = require("./routes/moduleRoutes");
 const lessonRoutes = require("./routes/lessonRoutes");
 const labRoutes = require("./routes/labRoutes");
 const examRoutes = require("./routes/examRoutes");
-const examAttemptRoutes = require("./routes/examAttemptRoutes");
 const enrollmentRoutes = require("./routes/enrollmentRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const adminRoutes = require("./routes/adminRoutes");

@@ -1,10 +1,20 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // Autor:   Jairo Quispe Coa
-// Fecha:   2025-11-10
+// Fecha:   2025-11-11
 // Archivo: courseController.js
 // ═══════════════════════════════════════════════════════════════════════════════
+
 const prisma = require("../models");
 
+// 🔹 Función para generar código único del curso
+const generateCourseCode = () => {
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `QTEC-${random}`;
+};
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Crear un nuevo curso (ADMIN o PROFESSOR)
+// ────────────────────────────────────────────────────────────────────────────────
 const createCourse = async (req, res) => {
   const { title, description, level = "BASIC", status = "DRAFT" } = req.body;
   const professorId =
@@ -36,9 +46,11 @@ const createCourse = async (req, res) => {
         level,
         status: finalStatus,
         professor: { connect: { id: professorId } },
+        code: generateCourseCode(), // ← Nuevo campo
       },
       include: { professor: { select: { id: true, name: true, email: true } } },
     });
+
     res.status(201).json(course);
   } catch (error) {
     if (error.code === "P2003")
@@ -49,6 +61,9 @@ const createCourse = async (req, res) => {
   }
 };
 
+// ────────────────────────────────────────────────────────────────────────────────
+// Obtener lista de cursos (según rol)
+// ────────────────────────────────────────────────────────────────────────────────
 const getCourses = async (req, res) => {
   const { status, level, page = 1, limit = 10 } = req.query;
   const pageNum = parseInt(page);
@@ -76,6 +91,7 @@ const getCourses = async (req, res) => {
       }),
       prisma.course.count({ where }),
     ]);
+
     res.json({
       data: courses,
       total,
@@ -89,6 +105,9 @@ const getCourses = async (req, res) => {
   }
 };
 
+// ────────────────────────────────────────────────────────────────────────────────
+// Obtener curso por ID (control de acceso por rol)
+// ────────────────────────────────────────────────────────────────────────────────
 const getCourseById = async (req, res) => {
   const courseId = Number(req.params.id);
   if (isNaN(courseId))
@@ -110,6 +129,7 @@ const getCourseById = async (req, res) => {
         },
       },
     });
+
     if (!course)
       return res.status(404).json({ message: "Curso no encontrado." });
 
@@ -131,6 +151,9 @@ const getCourseById = async (req, res) => {
   }
 };
 
+// ────────────────────────────────────────────────────────────────────────────────
+// Actualizar curso
+// ────────────────────────────────────────────────────────────────────────────────
 const updateCourse = async (req, res) => {
   const courseId = Number(req.params.id);
   if (isNaN(courseId))
@@ -183,6 +206,9 @@ const updateCourse = async (req, res) => {
   }
 };
 
+// ────────────────────────────────────────────────────────────────────────────────
+// Eliminar o archivar curso
+// ────────────────────────────────────────────────────────────────────────────────
 const deleteCourse = async (req, res) => {
   const courseId = Number(req.params.id);
   if (isNaN(courseId))
@@ -222,11 +248,13 @@ const deleteCourse = async (req, res) => {
   }
 };
 
+// ────────────────────────────────────────────────────────────────────────────────
+// Listar estudiantes inscritos
+// ────────────────────────────────────────────────────────────────────────────────
 const getEnrolledStudents = async (req, res) => {
   const courseId = Number(req.params.id);
-  if (isNaN(courseId)) {
+  if (isNaN(courseId))
     return res.status(400).json({ message: "ID de curso inválido." });
-  }
 
   try {
     const course = await prisma.course.findUnique({
@@ -249,15 +277,13 @@ const getEnrolledStudents = async (req, res) => {
       },
     });
 
-    if (!course) {
+    if (!course)
       return res.status(404).json({ message: "Curso no encontrado." });
-    }
 
-    if (req.user.role !== "ADMIN" && req.user.id !== course.professorId) {
+    if (req.user.role !== "ADMIN" && req.user.id !== course.professorId)
       return res.status(403).json({
         message: "No tienes permiso para ver los inscritos de este curso.",
       });
-    }
 
     const students = course.enrollments.map((e) => ({
       id: e.student.id,
@@ -267,7 +293,7 @@ const getEnrolledStudents = async (req, res) => {
     }));
 
     res.json({
-      course: { id: course.id, title: course.title },
+      course: { id: course.id, title: course.title, code: course.code },
       professor: course.professor,
       totalStudents: students.length,
       students,

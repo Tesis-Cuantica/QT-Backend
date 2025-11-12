@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Instalar dependencias
+# Copiar dependencias
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
@@ -11,20 +11,25 @@ RUN npm ci --only=production && npm cache clean --force
 COPY prisma ./prisma
 RUN npx prisma generate
 
+# Copiar código fuente
+COPY . .
+
 # Etapa de ejecución
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copiar node_modules 
+# Copiar dependencias y código del builder
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app ./
 
-# Copiar el resto del código
-COPY . .
-
-# Crear carpeta para certificados
+# Crear carpetas necesarias
 RUN mkdir -p ./public/certificates
+
+# Copiar entrypoint y darle permisos
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 EXPOSE 5000
 
-CMD ["npm", "start"]
+ENTRYPOINT ["./entrypoint.sh"]

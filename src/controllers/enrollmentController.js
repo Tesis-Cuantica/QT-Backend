@@ -1,208 +1,178 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Autor:   Jairo Quispe Coa
+// Fecha:   2025-11-11
+// Archivo: enrollmentController.js (con flujo de inscripción por código)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const prisma = require("../models");
 
-const enrollInCourse = async (req, res) => {
-  const cid = Number(req.body.courseId);
+// ────────────────────────────────────────────────────────────────────────────────
+// 1️⃣ Estudiante se une a un curso usando código
+// ────────────────────────────────────────────────────────────────────────────────
+const joinCourseByCode = async (req, res) => {
+  const { code } = req.body;
   const studentId = req.user.id;
 
-  if (isNaN(cid))
-    return res.status(400).json({ message: "ID de curso inválido." });
-  if (req.user.role !== "STUDENT")
+  if (!code)
     return res
-      .status(403)
-      .json({ message: "Solo los estudiantes pueden inscribirse en cursos." });
+      .status(400)
+      .json({ message: "El código del curso es requerido." });
 
   try {
-    const course = await prisma.course.findUnique({ where: { id: cid } });
+    const course = await prisma.course.findUnique({ where: { code } });
     if (!course)
       return res.status(404).json({ message: "Curso no encontrado." });
-    if (course.status !== "ACTIVE")
-      return res
-        .status(400)
-        .json({ message: "El curso no está activo para inscripción." });
 
-    const existing = await prisma.enrollment.findUnique({
-      where: { studentId_courseId: { studentId, courseId: cid } },
+    const existing = await prisma.enrollment.findFirst({
+      where: { studentId, courseId: course.id },
     });
     if (existing)
-      return res
-        .status(400)
-        .json({ message: "Ya estás inscrito en este curso." });
+      return res.status(400).json({
+        message: "Ya tienes una solicitud o inscripción en este curso.",
+      });
 
     const enrollment = await prisma.enrollment.create({
-      data: { studentId, courseId: cid },
-    });
-    res.status(201).json(enrollment);
-  } catch (error) {
-    res.status(400).json({
-      message: "Error al inscribirse en el curso.",
-      error: error.message,
-    });
-  }
-};
-
-const getMyEnrollments = async (req, res) => {
-  const pageNum = parseInt(req.query.page || 1);
-  const limitNum = parseInt(req.query.limit || 10);
-  const skip = (pageNum - 1) * limitNum;
-
-  try {
-    const [enrollments, total] = await Promise.all([
-      prisma.enrollment.findMany({
-        where: { studentId: req.user.id },
-        skip,
-        take: limitNum,
-        include: {
-          course: {
-            include: {
-              professor: { select: { name: true, email: true } },
-              _count: { select: { modules: true } },
-            },
-          },
-        },
-        orderBy: { enrolledAt: "desc" },
-      }),
-      prisma.enrollment.count({ where: { studentId: req.user.id } }),
-    ]);
-
-    res.json({
-      enrollments,
-      total,
-      page: pageNum,
-      pages: Math.ceil(total / limitNum),
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Error al obtener tus inscripciones.",
-      error: error.message,
-    });
-  }
-};
-
-const calculateProgress = async (studentId, courseId) => {
-  const modules = await prisma.module.findMany({
-    where: { courseId },
-    include: {
-      lessons: { select: { id: true } },
-      labs: { select: { id: true } },
-      exams: { select: { id: true, passingScore: true } },
-    },
-  });
-  if (modules.length === 0) return 0.0;
-
-  const labsDoneCount = await prisma.studentLab.count({
-    where: { studentId, lab: { moduleId: { in: modules.map((m) => m.id) } } },
-  });
-  const examAttempts = await prisma.examAttempt.findMany({
-    where: {
-      studentId,
-      exam: { moduleId: { in: modules.map((m) => m.id) } },
-      status: "GRADED",
-    },
-    orderBy: { score: "desc" },
-  });
-
-  const examResults = {};
-  examAttempts.forEach((a) => {
-    if (!examResults[a.examId] || examResults[a.examId].score < a.score)
-      examResults[a.examId] = a;
-  });
-
-  let completedModules = 0;
-  for (const module of modules) {
-    const lessonsDone = module.lessons.length > 0;
-    const labsDone = labsDoneCount > 0;
-    let examsPassed = true;
-    for (const exam of module.exams) {
-      const attempt = examResults[exam.id];
-      if (!attempt || attempt.score < exam.passingScore) {
-        examsPassed = false;
-        break;
-      }
-    }
-    if (lessonsDone && labsDone && examsPassed) completedModules++;
-  }
-
-  return parseFloat(((completedModules / modules.length) * 100).toFixed(2));
-};
-
-const updateProgress = async (req, res) => {
-  const cid = Number(req.body.courseId);
-  const studentId = req.user.id;
-  if (isNaN(cid))
-    return res.status(400).json({ message: "ID de curso inválido." });
-
-  try {
-    const enrollment = await prisma.enrollment.findUnique({
-      where: { studentId_courseId: { studentId, courseId: cid } },
-    });
-    if (!enrollment)
-      return res
-        .status(404)
-        .json({ message: "No estás inscrito en este curso." });
-
-    const progress = await calculateProgress(studentId, cid);
-
-    const updated = await prisma.enrollment.update({
-      where: { studentId_courseId: { studentId, courseId: cid } },
       data: {
-        progress,
-        completed: progress >= 100,
-        completedAt: progress >= 100 ? new Date() : null,
+        studentId,
+        courseId: course.id,
+        status: "PENDING", // Esperando aprobación del profesor
+      },
+      include: {
+        course: { select: { id: true, title: true, code: true } },
       },
     });
-    res.json(updated);
+
+    res.status(201).json({
+      message: "Solicitud enviada. Esperando aprobación del profesor.",
+      enrollment,
+    });
   } catch (error) {
     res.status(400).json({
-      message: "Error al actualizar el progreso.",
+      message: "Error al unirse al curso.",
       error: error.message,
     });
   }
 };
 
-const getProgress = async (req, res) => {
-  const cid = Number(req.params.courseId);
-  const studentId = req.user.id;
-  if (isNaN(cid))
-    return res.status(400).json({ message: "ID de curso inválido." });
+// ────────────────────────────────────────────────────────────────────────────────
+// 2️⃣ Profesor aprueba o rechaza solicitud de inscripción
+// ────────────────────────────────────────────────────────────────────────────────
+const approveEnrollment = async (req, res) => {
+  const enrollmentId = Number(req.params.id);
+  const { status } = req.body;
+
+  if (isNaN(enrollmentId))
+    return res.status(400).json({ message: "ID de inscripción inválido." });
+
+  if (!["APPROVED", "REJECTED"].includes(status))
+    return res.status(400).json({ message: "Estado inválido." });
 
   try {
     const enrollment = await prisma.enrollment.findUnique({
-      where: { studentId_courseId: { studentId, courseId: cid } },
+      where: { id: enrollmentId },
+      include: { course: { select: { professorId: true } } },
     });
+
     if (!enrollment)
+      return res.status(404).json({ message: "Inscripción no encontrada." });
+
+    if (
+      req.user.role !== "ADMIN" &&
+      req.user.id !== enrollment.course.professorId
+    )
       return res
-        .status(404)
-        .json({ message: "No estás inscrito en este curso." });
+        .status(403)
+        .json({ message: "No tienes permiso para modificar esta solicitud." });
 
-    res.json(enrollment);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error al obtener el progreso.", error: error.message });
-  }
-};
-const completeCourse = async (req, res) => {
-  const studentId = req.user.id;
-  const { courseId } = req.params;
-
-  try {
     const updated = await prisma.enrollment.update({
-      where: { studentId_courseId: { studentId, courseId: Number(courseId) } },
-      data: { completed: true, progress: 100, completedAt: new Date() },
+      where: { id: enrollmentId },
+      data: { status },
+      include: {
+        student: { select: { id: true, name: true, email: true } },
+        course: { select: { id: true, title: true, code: true } },
+      },
     });
 
-    res.json({ message: "Curso completado.", enrollment: updated });
+    res.json({
+      message:
+        status === "APPROVED"
+          ? "Estudiante aprobado correctamente."
+          : "Solicitud rechazada.",
+      enrollment: updated,
+    });
   } catch (error) {
-    res.status(500).json({
-      message: "Error al marcar curso como completado.",
+    res.status(400).json({
+      message: "Error al aprobar o rechazar inscripción.",
       error: error.message,
     });
   }
 };
+
+// ────────────────────────────────────────────────────────────────────────────────
+// 3️⃣ Obtener inscripciones (según rol)
+// ────────────────────────────────────────────────────────────────────────────────
+const getEnrollments = async (req, res) => {
+  try {
+    let where = {};
+    if (req.user.role === "STUDENT") where.studentId = req.user.id;
+    else if (req.user.role === "PROFESSOR")
+      where.course = { professorId: req.user.id };
+
+    const enrollments = await prisma.enrollment.findMany({
+      where,
+      include: {
+        student: { select: { id: true, name: true, email: true } },
+        course: { select: { id: true, title: true, code: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(enrollments);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al obtener las inscripciones.",
+      error: error.message,
+    });
+  }
+};
+
+// ────────────────────────────────────────────────────────────────────────────────
+// 4️⃣ Eliminar inscripción (admin o profesor)
+// ────────────────────────────────────────────────────────────────────────────────
+const deleteEnrollment = async (req, res) => {
+  const enrollmentId = Number(req.params.id);
+  if (isNaN(enrollmentId))
+    return res.status(400).json({ message: "ID de inscripción inválido." });
+
+  try {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      include: { course: { select: { professorId: true } } },
+    });
+    if (!enrollment)
+      return res.status(404).json({ message: "Inscripción no encontrada." });
+
+    if (
+      req.user.role !== "ADMIN" &&
+      req.user.id !== enrollment.course.professorId
+    )
+      return res
+        .status(403)
+        .json({ message: "No tienes permiso para eliminar esta inscripción." });
+
+    await prisma.enrollment.delete({ where: { id: enrollmentId } });
+    res.json({ message: "Inscripción eliminada correctamente." });
+  } catch (error) {
+    res.status(400).json({
+      message: "Error al eliminar la inscripción.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
-  enrollInCourse,
-  getMyEnrollments,
-  updateProgress,
-  getProgress,
-  completeCourse,
+  joinCourseByCode,
+  approveEnrollment,
+  getEnrollments,
+  deleteEnrollment,
 };

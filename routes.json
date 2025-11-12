@@ -125,23 +125,19 @@
   },
   {
     "method": "POST",
-    "path": "\\~\\"
+    "path": "\\~\\join"
   },
   {
     "method": "GET",
     "path": "\\~\\"
   },
   {
-    "method": "PUT",
-    "path": "\\~\\progress"
+    "method": "PATCH",
+    "path": "\\~\\:id\\approve"
   },
   {
-    "method": "GET",
-    "path": "\\~\\progress"
-  },
-  {
-    "method": "GET",
-    "path": "\\~\\:courseId\\progress"
+    "method": "DELETE",
+    "path": "\\~\\:id"
   },
   {
     "method": "POST",

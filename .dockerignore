@@ -1,0 +1,44 @@
+# Archivos del sistema y editor
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.log
+
+# Node y dependencias locales
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Entorno
+.env
+.env.local
+.env.development
+.env.production
+
+# Archivos de control de versiones
+.git
+.gitignore
+
+# Archivos de build
+dist
+build
+
+# Archivos del host
+*.zip
+*.tar
+*.tar.gz
+
+# Prisma generados
+prisma/dev.db
+prisma/test.db
+
+# Archivos temporales o locales
+.tmp
+.cache
+*.swp
+
+# No copiar certificados locales
+/public/certificates/*
+!public/certificates/.gitkeep
