@@ -24,7 +24,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      DATABASE_URL: postgresql://quantumtec:quantumtec@db:5432/quantumtec?schema=public
+      DATABASE_URL: postgresql://qt_db_tc9w_user:f1Qzpl6lszxpFrOs0VWTu7JL2xpL3vmH@dpg-d49v8c9e2q1c73dsn96g-a.oregon-postgres.render.com/qt_db_tc9w
       JWT_SECRET: quantumtec_secret_2025
       JWT_EXPIRES_IN: 24h
       PORT: 5000
