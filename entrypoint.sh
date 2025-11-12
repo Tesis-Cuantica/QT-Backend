@@ -1,11 +1,6 @@
 #!/bin/sh
 set -e
 
-echo "🧩 Esperando que la base de datos esté lista..."
-until nc -z db 5432; do
-  sleep 1
-done
-
 echo "🔄 Aplicando migraciones de Prisma..."
 npx prisma migrate deploy
 

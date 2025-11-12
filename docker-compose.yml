@@ -1,21 +1,4 @@
 services:
-  db:
-    image: postgres:15
-    container_name: quantumtec-db
-    environment:
-      POSTGRES_USER: quantumtec
-      POSTGRES_PASSWORD: quantumtec
-      POSTGRES_DB: quantumtec
-    ports:
-      - "5432:5432"
-    volumes:
-      - quantumtec_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U quantumtec -d quantumtec"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: .
@@ -27,13 +10,8 @@ services:
       DATABASE_URL: postgresql://qt_db_tc9w_user:f1Qzpl6lszxpFrOs0VWTu7JL2xpL3vmH@dpg-d49v8c9e2q1c73dsn96g-a.oregon-postgres.render.com/qt_db_tc9w
       JWT_SECRET: quantumtec_secret_2025
       JWT_EXPIRES_IN: 24h
+      NODE_ENV: production
       PORT: 5000
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
       - ./public/certificates:/app/public/certificates
     restart: unless-stopped
-
-volumes:
-  quantumtec_postgres_data:
